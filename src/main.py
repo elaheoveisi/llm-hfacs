@@ -71,7 +71,10 @@ with skip_run("run", "input_output_expanded_llm_query") as check, check():
 
             # NOTE: Need to logic to save variable output
             if prompt in output.keys():
-                output[prompt] += result_mapping[result]
+                try:
+                    output[prompt] += result_mapping[result]
+                except KeyError:
+                    pass
             else:
                 output[prompt] = result_mapping[result]
 
