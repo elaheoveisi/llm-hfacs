@@ -1,0 +1,24 @@
+merged_queries: >
+  Use the helicopter accident report context below to answer the following questions. The output must be YES or NO. No other information or comment must be present.
+
+  Question:
+  1. Is the inadequate supervision one of the contributing factors to this accident?
+  2. Is the planned inappropriate operations one of the contributing factors to this accident?
+  3. Is the failure to correct known problems one of the contributing factors to this accident?
+  4. Is the supervisory violation one of the contributing factors to this accident?
+  5. Are physical environment factors like wind, rain, or snow contributing factors to this accident?
+  6. Are tools or technology issues contributing factors to this accident?
+  7. Are communication, coordination, or planning problems contributing factors to this accident?
+  8. Are mental state or mental problems one of the contributing factors to this accident?
+  9. Is the physiological state one of the contributing factors to this accident?
+  10. Are physical or mental limitations one of the contributing factors to this accident?
+  11. Is decision error or making a wrong decision one of the contributing factors to this accident?
+  12. Are skill-based errors contributing factors to this accident?
+  14. Is perceptual error one of the contributing factors to this accident?
+  15. Is routine violation one of the contributing factors to this accident?
+  16. Is exceptional error one of the contributing factors to this accident?
+
+  I want 17 answers.
+
+  Context:
+  {context}

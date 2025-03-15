@@ -1,26 +1,26 @@
-organizational_influence: >
-  Using the helicopter accident report context below  to answer the question. The output must be YES or NO. No other information or comment must be present.
+# organizational_influence: >
+#   Using the helicopter accident report context below  to answer the question. The output must be YES or NO. No other information or comment must be present.
 
-  Question:
-  Organizational influences, including culture, policies, and resource allocation, were contributing factors to this accident. Were organizational influences a contributing factor to this accident?
+#   Question:
+#   Organizational influences, including culture, policies, and resource allocation, were contributing factors to this accident. Were organizational influences a contributing factor to this accident?
 
-  Context:
-  {context}
+#   Context:
+#   {context}
 
-organizational_influence_detailed: >
-  Using the helicopter accident report context below  to answer the question. The output must be YES or NO. No other information or comment must be present.
+# organizational_influence_detailed: >
+#   Using the helicopter accident report context below  to answer the question. The output must be YES or NO. No other information or comment must be present.
 
-  Question:
-  Organizational influences, including culture, policies, and resource allocation, were contributing factors to this accident. The following report has been idenfied to have a organizational influence as a contributing to the accident. I want you to further answer the following questions:
+#   Question:
+#   Organizational influences, including culture, policies, and resource allocation, were contributing factors to this accident. The following report has been idenfied to have a organizational influence as a contributing to the accident. I want you to further answer the following questions:
 
-  1. Operational processes refer to the systems, procedures, and practices that govern day-to-day operations within an organization, particularly those that directly affect safety and performance. Is the operational process issue one of the contributing factors to this accident?"
-  2. Resource management refers to how effectively an organization allocates, utilizes, and manages its resources—such as personnel, equipment, time, and information—to support safe, efficient, and effective operations. Is the resource management problem one of the contributing factors to this accident?"
-  3. Operational culture referes to prevailing atmosphere/vision within the organization including such things as policies, command structure, and culture. Is operational culture one of the contributing factors to this accident?"
+#   1. Operational processes refer to the systems, procedures, and practices that govern day-to-day operations within an organization, particularly those that directly affect safety and performance. Is the operational process issue one of the contributing factors to this accident?"
+#   2. Resource management refers to how effectively an organization allocates, utilizes, and manages its resources—such as personnel, equipment, time, and information—to support safe, efficient, and effective operations. Is the resource management problem one of the contributing factors to this accident?"
+#   3. Operational culture referes to prevailing atmosphere/vision within the organization including such things as policies, command structure, and culture. Is operational culture one of the contributing factors to this accident?"
 
-  Think step by step for each question and then give the final answers.
+#   Think step by step for each question and then give the final answers. I want three answers.
 
-  Contex:
-  {context}
+#   Contex:
+#   {context}
 
 supervisory_factors: >
   Using the helicopter accident report context below to answer the question. The output must be YES or NO. No other information or comment must be present.
@@ -42,7 +42,7 @@ supervisory_factors_detailed: >
   3. Is the failure to correct known problems one of the contributing factors to this accident?
   4. Supervisory violation refers to cases where supervisors or managers willfully disregard rules, policies, or standard operating procedures (SOPs), knowingly creating unsafe conditions. Is the supervisory violation one of the contributing factors to this accident?
 
-  Think step by step for each question and then give the final answers.
+  Think step by step for each question and then give the final answers. I want four answers.
 
   Context:
   {context}
@@ -71,7 +71,7 @@ preconditions_for_unsafe_acts_detailed: >
   7. Is the physiological state one of the contributing factors to this accident?
   8. Are physical or mental limitations one of the contributing factors to this accident?
 
-  Think step by step for each question and then give the final answers.
+  Think step by step for each question and then give the final answers. I want 8 answers
 
   Context:
   {context}
@@ -97,7 +97,7 @@ unsafe_acts_detailed: >
   4. Is routine violation one of the contributing factors to this accident?
   5. Is exceptional violation one of the contributing factors to this accident?
 
-  Think step by step for each question and then give the final answers.
+  Think step by step for each question and then give the final answers. I want 5 answers.
 
   Context:
   {context}

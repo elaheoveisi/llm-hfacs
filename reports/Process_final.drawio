@@ -1,0 +1,94 @@
+<mxfile host="Electron" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/26.0.16 Chrome/132.0.6834.196 Electron/34.2.0 Safari/537.36" version="26.0.16">
+  <diagram name="Page-1" id="fjKPfMRhA-HlgvhuL2E4">
+    <mxGraphModel dx="1836" dy="702" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="jlo-3tBUnj3beRBFPz0Y-22" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;" parent="1" source="jlo-3tBUnj3beRBFPz0Y-7" target="jlo-3tBUnj3beRBFPz0Y-16" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="135" y="80" />
+              <mxPoint x="135" y="80" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="jlo-3tBUnj3beRBFPz0Y-7" value="Manual analysis" style="swimlane;whiteSpace=wrap;html=1;fillColor=#fa6800;strokeColor=#C73500;fontColor=#000000;" parent="1" vertex="1">
+          <mxGeometry x="-403" y="12" width="456" height="92" as="geometry" />
+        </mxCell>
+        <mxCell id="jlo-3tBUnj3beRBFPz0Y-8" value="&lt;font style=&quot;font-size: 14px;&quot; face=&quot;Courier New&quot;&gt;&lt;b style=&quot;&quot;&gt;Extract dataset from 2012 to 2022 fron NTSB database&lt;/b&gt;&lt;/font&gt;" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" parent="jlo-3tBUnj3beRBFPz0Y-7" vertex="1">
+          <mxGeometry y="31" width="455" height="29" as="geometry" />
+        </mxCell>
+        <mxCell id="jlo-3tBUnj3beRBFPz0Y-9" value="&lt;font style=&quot;font-size: 14px;&quot; face=&quot;Courier New&quot;&gt;&lt;b style=&quot;&quot;&gt;Implement the HFACS technique on each file&lt;/b&gt;&lt;/font&gt;" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" parent="jlo-3tBUnj3beRBFPz0Y-7" vertex="1">
+          <mxGeometry x="30" y="52" width="371" height="29" as="geometry" />
+        </mxCell>
+        <mxCell id="jlo-3tBUnj3beRBFPz0Y-34" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;" parent="1" source="jlo-3tBUnj3beRBFPz0Y-16" target="jlo-3tBUnj3beRBFPz0Y-30" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="jlo-3tBUnj3beRBFPz0Y-16" value="HFACS analysis using standard LLM&amp;nbsp;" style="swimlane;whiteSpace=wrap;html=1;fillColor=#60a917;strokeColor=#2D7600;fontColor=#ffffff;" parent="1" vertex="1">
+          <mxGeometry x="212" y="9" width="607" height="160" as="geometry" />
+        </mxCell>
+        <mxCell id="jlo-3tBUnj3beRBFPz0Y-20" value="&lt;font face=&quot;Courier New&quot; style=&quot;color: rgb(255, 0, 0); font-size: 14px;&quot;&gt;&lt;b style=&quot;&quot;&gt;Prompt : answer the questions with &quot;yes&quot; or &quot;no&quot;&amp;nbsp;&lt;/b&gt;&lt;/font&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;" style="text;html=1;align=left;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" parent="jlo-3tBUnj3beRBFPz0Y-16" vertex="1">
+          <mxGeometry x="9" y="21" width="430" height="43" as="geometry" />
+        </mxCell>
+        <mxCell id="jlo-3tBUnj3beRBFPz0Y-24" value="&lt;font style=&quot;font-size: 14px;&quot; face=&quot;Courier New&quot;&gt;&lt;b style=&quot;&quot;&gt;HFACS: Asking the HFACS questions without giving any definition&amp;nbsp;&lt;/b&gt;&lt;/font&gt;&lt;div&gt;&lt;font style=&quot;font-size: 14px;&quot; face=&quot;Courier New&quot;&gt;&lt;b style=&quot;&quot;&gt;of the components of the question&lt;/b&gt;&lt;/font&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;font style=&quot;font-size: 14px;&quot;&gt;&lt;br&gt;&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;font style=&quot;font-size: 14px;&quot; face=&quot;Courier New&quot;&gt;&lt;b&gt;&lt;br&gt;&lt;/b&gt;&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;font style=&quot;font-size: 14px;&quot; face=&quot;Courier New&quot;&gt;&lt;b&gt;&lt;br&gt;&lt;/b&gt;&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;/div&gt;" style="text;html=1;align=left;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" parent="jlo-3tBUnj3beRBFPz0Y-16" vertex="1">
+          <mxGeometry x="4" y="44" width="556" height="125" as="geometry" />
+        </mxCell>
+        <mxCell id="jlo-3tBUnj3beRBFPz0Y-38" value="&lt;span style=&quot;font-family: &amp;quot;Courier New&amp;quot;; text-wrap-mode: nowrap;&quot;&gt;&lt;font style=&quot;color: rgb(25, 25, 25);&quot;&gt;Example: &quot;Is routine violation one of the contributing factors to this accident?&lt;/font&gt;&lt;/span&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;" parent="jlo-3tBUnj3beRBFPz0Y-16" vertex="1">
+          <mxGeometry x="6" y="94" width="591" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="jlo-3tBUnj3beRBFPz0Y-47" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;" parent="1" source="jlo-3tBUnj3beRBFPz0Y-30" target="jlo-3tBUnj3beRBFPz0Y-42" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="jlo-3tBUnj3beRBFPz0Y-30" value="HFACS analysis using LLM with explanation about questions content&amp;nbsp;" style="swimlane;whiteSpace=wrap;html=1;fillColor=#e3c800;strokeColor=#B09500;fontColor=#000000;" parent="1" vertex="1">
+          <mxGeometry x="189" y="194" width="653" height="229" as="geometry" />
+        </mxCell>
+        <mxCell id="jlo-3tBUnj3beRBFPz0Y-32" value="&lt;font style=&quot;font-size: 14px; color: rgb(15, 15, 15);&quot; face=&quot;Courier New&quot;&gt;&lt;b style=&quot;&quot;&gt;Prompt : answer the questions with &quot;1&quot; for Yes and&amp;nbsp; &quot;0&quot; for No&lt;/b&gt;&lt;/font&gt;" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" parent="jlo-3tBUnj3beRBFPz0Y-30" vertex="1">
+          <mxGeometry x="4" y="32" width="539" height="29" as="geometry" />
+        </mxCell>
+        <mxCell id="jlo-3tBUnj3beRBFPz0Y-35" value="&lt;div style=&quot;text-wrap-mode: nowrap;&quot;&gt;&lt;font style=&quot;color: rgb(0, 25, 51);&quot;&gt;&lt;font style=&quot;&quot; face=&quot;Courier New&quot;&gt;&lt;b style=&quot;&quot;&gt;Example:&amp;nbsp;&lt;/b&gt;&lt;/font&gt;&lt;span style=&quot;background-color: transparent;&quot;&gt;&lt;font face=&quot;Courier New&quot;&gt;&lt;b&gt;&quot;The files given are helicopter accidents&#39;&amp;nbsp;&lt;/b&gt;&lt;/font&gt;&lt;/span&gt;&lt;/font&gt;&lt;/div&gt;&lt;div style=&quot;text-wrap-mode: nowrap;&quot;&gt;&lt;span style=&quot;background-color: transparent;&quot;&gt;&lt;font style=&quot;color: rgb(0, 25, 51);&quot; face=&quot;Courier New&quot;&gt;&lt;b&gt;reports. resource mangement&amp;nbsp; refers to how effectively an organization allocates,&amp;nbsp;&lt;/b&gt;&lt;/font&gt;&lt;/span&gt;&lt;/div&gt;&lt;div style=&quot;text-wrap-mode: nowrap;&quot;&gt;&lt;font style=&quot;color: rgb(0, 25, 51);&quot;&gt;&lt;span style=&quot;background-color: transparent;&quot;&gt;&lt;font face=&quot;Courier New&quot;&gt;&lt;b&gt;utilizes,&amp;nbsp;&lt;/b&gt;&lt;/font&gt;&lt;/span&gt;&lt;b style=&quot;font-family: &amp;quot;Courier New&amp;quot;; background-color: transparent;&quot;&gt;and manages its resources—such as personnel, equipment, time, and&amp;nbsp;&lt;/b&gt;&lt;/font&gt;&lt;/div&gt;&lt;div style=&quot;text-wrap-mode: nowrap;&quot;&gt;&lt;font style=&quot;color: rgb(0, 25, 51);&quot;&gt;&lt;b style=&quot;font-family: &amp;quot;Courier New&amp;quot;; background-color: transparent;&quot;&gt;information—to&amp;nbsp;&lt;/b&gt;&lt;b style=&quot;font-family: &amp;quot;Courier New&amp;quot;; background-color: transparent;&quot;&gt;support safe, efficient, and effective operations.&lt;/b&gt;&lt;/font&gt;&lt;/div&gt;&lt;div style=&quot;text-wrap-mode: nowrap;&quot;&gt;&lt;span style=&quot;background-color: transparent;&quot;&gt;&lt;font style=&quot;color: rgb(0, 25, 51);&quot; face=&quot;Courier New&quot;&gt;&lt;b style=&quot;&quot;&gt;Is the resource management problem one of the contributing factors to this accident?&lt;/b&gt;&lt;/font&gt;&lt;/span&gt;&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;" parent="jlo-3tBUnj3beRBFPz0Y-30" vertex="1">
+          <mxGeometry x="8.5" y="118" width="627.5" height="106" as="geometry" />
+        </mxCell>
+        <mxCell id="jlo-3tBUnj3beRBFPz0Y-37" value="&lt;font style=&quot;text-align: left; text-wrap-mode: nowrap; font-size: 14px; color: rgb(255, 0, 0);&quot; face=&quot;Courier New&quot;&gt;&lt;b style=&quot;&quot;&gt;HFACS: Asking the questions by giving a brief definition of the components&amp;nbsp;&lt;/b&gt;&lt;/font&gt;&lt;div style=&quot;text-align: left; text-wrap-mode: nowrap;&quot;&gt;&lt;font style=&quot;font-size: 14px; color: rgb(255, 0, 0);&quot; face=&quot;Courier New&quot;&gt;&lt;b&gt;of the question.&amp;nbsp; &amp;nbsp;&lt;/b&gt;&lt;/font&gt;&lt;/div&gt;&lt;div style=&quot;text-align: left; text-wrap-mode: nowrap;&quot;&gt;&lt;font style=&quot;font-size: 14px; color: rgb(255, 0, 0);&quot; face=&quot;Courier New&quot;&gt;&lt;b style=&quot;&quot;&gt;(19 questions respective to the HFACS subcategories):&lt;/b&gt;&lt;/font&gt;&lt;/div&gt;" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="jlo-3tBUnj3beRBFPz0Y-30" vertex="1">
+          <mxGeometry x="47" y="56" width="562" height="66" as="geometry" />
+        </mxCell>
+        <mxCell id="ZNbKRGCy-I9xQnczh-9V-3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.75;exitDx=0;exitDy=0;strokeWidth=2;" edge="1" parent="1" source="jlo-3tBUnj3beRBFPz0Y-42">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="179.2000732421875" y="559.800048828125" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="jlo-3tBUnj3beRBFPz0Y-42" value="HFACS analysis using CoT technique" style="swimlane;whiteSpace=wrap;html=1;fillColor=#ffcccc;strokeColor=#36393d;" parent="1" vertex="1">
+          <mxGeometry x="-417" y="157" width="558" height="424" as="geometry" />
+        </mxCell>
+        <mxCell id="jlo-3tBUnj3beRBFPz0Y-44" value="&lt;font style=&quot;font-size: 14px; color: rgb(25, 25, 25);&quot; face=&quot;Courier New&quot;&gt;&lt;b style=&quot;&quot;&gt;Prompt : answer the questions with &quot;1&quot; for Yes and&amp;nbsp; &quot;0&quot; for NO&lt;/b&gt;&lt;/font&gt;" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" parent="jlo-3tBUnj3beRBFPz0Y-42" vertex="1">
+          <mxGeometry x="19" y="29" width="539" height="29" as="geometry" />
+        </mxCell>
+        <mxCell id="jlo-3tBUnj3beRBFPz0Y-45" value="&lt;div style=&quot;text-wrap-mode: nowrap;&quot;&gt;&lt;b&gt;&lt;font&gt;&lt;br&gt;&lt;/font&gt;&lt;/b&gt;&lt;/div&gt;&lt;p class=&quot;MsoNormal&quot;&gt;&lt;font face=&quot;Courier New&quot;&gt;&lt;b&gt;questions = {&lt;/b&gt;&lt;/font&gt;&lt;/p&gt;&lt;p class=&quot;MsoNormal&quot;&gt;&lt;font face=&quot;Courier New&quot;&gt;&lt;b&gt;&amp;nbsp; &amp;nbsp;&lt;font style=&quot;&quot;&gt; &quot;The files are given are about helicopter accidents. Organizational influence in the HFACS model is the impact of an organization&#39;s culture, policies, and procedures on human performance and&lt;br&gt;safety. Is organizational influence contributing to this accident?&quot;: [&lt;/font&gt;&lt;/b&gt;&lt;/font&gt;&lt;/p&gt;&lt;p class=&quot;MsoNormal&quot;&gt;&lt;font face=&quot;Courier New&quot;&gt;&lt;b&gt;&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &quot;1.1) The files given are helicopter accidents&#39; reports. Organizational culture refers to the shared values, beliefs, norms, and practices within an organization that influence the behavior of its members. Is the lack of organizational culture one of the contributing factors to this accident?&quot;,&lt;/b&gt;&lt;/font&gt;&lt;/p&gt;&lt;p class=&quot;MsoNormal&quot;&gt;&lt;font face=&quot;Courier New&quot;&gt;&lt;b&gt;&amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;&lt;/b&gt;&lt;/font&gt;&lt;/p&gt;&lt;font face=&quot;Courier New&quot;&gt;&lt;b&gt;&lt;br&gt;&lt;/b&gt;&lt;/font&gt;&lt;div style=&quot;text-wrap-mode: nowrap;&quot;&gt;&lt;font color=&quot;#001933&quot;&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255)); text-wrap-mode: wrap;&quot;&gt;&lt;font face=&quot;Courier New&quot;&gt;&lt;b style=&quot;&quot;&gt;&amp;nbsp;&lt;/b&gt;&lt;/font&gt;&lt;/span&gt;&lt;/font&gt;&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;" parent="jlo-3tBUnj3beRBFPz0Y-42" vertex="1">
+          <mxGeometry x="14" y="209" width="476" height="215" as="geometry" />
+        </mxCell>
+        <mxCell id="jlo-3tBUnj3beRBFPz0Y-49" value="&lt;font style=&quot;font-size: 14px;&quot; face=&quot;Courier New&quot;&gt;&lt;b&gt;New feature: Go through the reports and questions using CoT technique:&lt;/b&gt;&lt;/font&gt;&lt;div&gt;&lt;font style=&quot;font-size: 14px;&quot; face=&quot;Courier New&quot;&gt;&lt;b&gt;Answer the main question of each category:&lt;/b&gt;&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;font style=&quot;font-size: 14px;&quot; face=&quot;Courier New&quot;&gt;&lt;b&gt;If the answer was 1, go to the sub-questions in that category&lt;/b&gt;&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;font style=&quot;font-size: 14px;&quot; face=&quot;Courier New&quot;&gt;&lt;b&gt;if not, go to the next main category and implement the same procedure for the rest of the questions (using linear sequence of thoughts)&lt;/b&gt;&lt;/font&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffcccc;strokeColor=#36393d;align=left;" parent="jlo-3tBUnj3beRBFPz0Y-42" vertex="1">
+          <mxGeometry x="12" y="61" width="468" height="143" as="geometry" />
+        </mxCell>
+        <mxCell id="jlo-3tBUnj3beRBFPz0Y-58" value="HFACS analysis using ToT technique" style="swimlane;whiteSpace=wrap;html=1;fillColor=#cce5ff;strokeColor=#36393d;" parent="1" vertex="1">
+          <mxGeometry x="182" y="435" width="737" height="195" as="geometry" />
+        </mxCell>
+        <mxCell id="jlo-3tBUnj3beRBFPz0Y-59" value="&lt;font style=&quot;font-size: 14px;&quot; face=&quot;Courier New&quot;&gt;&lt;b style=&quot;&quot;&gt;Using the same dataset taken for standard LLM analysis&lt;/b&gt;&lt;/font&gt;" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" parent="jlo-3tBUnj3beRBFPz0Y-58" vertex="1">
+          <mxGeometry x="4" y="28" width="472" height="29" as="geometry" />
+        </mxCell>
+        <mxCell id="jlo-3tBUnj3beRBFPz0Y-60" value="&lt;font style=&quot;font-size: 14px; color: rgb(25, 25, 25);&quot; face=&quot;Courier New&quot;&gt;&lt;b style=&quot;&quot;&gt;Prompt: answer the questions with &quot;1&quot; for yes and&amp;nbsp; &quot;0&quot; for no&amp;nbsp;&lt;/b&gt;&lt;/font&gt;" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" parent="jlo-3tBUnj3beRBFPz0Y-58" vertex="1">
+          <mxGeometry x="12" y="54" width="539" height="29" as="geometry" />
+        </mxCell>
+        <mxCell id="jlo-3tBUnj3beRBFPz0Y-63" value="&lt;b style=&quot;&quot;&gt;&lt;font face=&quot;Courier New&quot;&gt;&lt;font style=&quot;font-size: 14px;&quot;&gt;New feature:&amp;nbsp;&lt;/font&gt; Instead of following a linear sequence of thoughts (as in CoT), ToT allows an LLM to explore &lt;span style=&quot;&quot; data-end=&quot;302&quot; data-start=&quot;276&quot;&gt;multiple possibilities&lt;/span&gt;, evaluate different solutions, and backtrack when necessary, similar to &lt;span style=&quot;&quot; data-end=&quot;400&quot; data-start=&quot;375&quot;&gt;human problem-solving&lt;/span&gt;.&lt;/font&gt;&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#cce5ff;strokeColor=#36393d;align=center;" parent="jlo-3tBUnj3beRBFPz0Y-58" vertex="1">
+          <mxGeometry x="12" y="95" width="708" height="87" as="geometry" />
+        </mxCell>
+        <mxCell id="jlo-3tBUnj3beRBFPz0Y-92" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" parent="1" target="jlo-3tBUnj3beRBFPz0Y-91" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="0.5" y="1004" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="jlo-3tBUnj3beRBFPz0Y-91" value="&lt;font style=&quot;font-size: 14px;&quot; face=&quot;Courier New&quot;&gt;&lt;b&gt;Find the best technique with the best performance after &quot;prompt engineering&quot;&lt;/b&gt;&lt;/font&gt;" style="whiteSpace=wrap;html=1;fillColor=#e6d0de;strokeColor=#996185;fontStyle=0;startSize=30;gradientColor=#d5739d;" parent="1" vertex="1">
+          <mxGeometry x="-253.5" y="1040" width="508" height="112" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
