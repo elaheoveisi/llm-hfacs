@@ -1,0 +1,74 @@
+supervisory_factors_detailed: >
+  Using the helicopter accident report context below to answer the question. The output must be YES or NO. No other information or comment must be present.
+
+  Imagine five different experts are answering each question. All experts will write down YES or NO by thinking step by step. Once you have all the answers you will select the most-occuring answer as the final answer for each question. I want four answers corresponding to 4 questions.
+
+  Question 1:
+  Inadequate supervision is a category under Supervisory Failures that refers to situations where leadership or management fail to provide the necessary oversight, guidance, or resources for personnel to perform their tasks safely and effectively. Is the inadequate supervision one of the contributing factors to this accident?
+
+  Question 2:
+  Planned inappropriate operations refers to situations where supervisors or management deliberately plan, approve, or allow operational strategies, policies, or schedules that increase the likelihood of human error or unsafe actions. Is the planned inappropriate operations one of the contributing factors to this accident?
+
+  Question 3:
+  Failure to correct known problems refers to situations where existing issues, defects, or hazards that have been identified but not addressed contribute to an accident or unsafe conditions. Is the failure to correct known problems one of the contributing factors to this accident?
+
+  Question 4:
+  4. Supervisory violation refers to cases where supervisors or managers willfully disregard rules, policies, or standard operating procedures (SOPs), knowingly creating unsafe conditions. Is the supervisory violation one of the contributing factors to this accident?
+
+  Context:
+  {context}
+
+preconditions_for_unsafe_acts_detailed: >
+  Using the helicopter accident report context below to answer the question. The output must be YES or NO. No other information or comment must be present.
+
+  Imagine five different experts are answering each question. All experts will write down YES or NO by thinking step by step. Once you have all the answers you will select the most-occuring answer as the final answer for each question. I want 8 answers.
+
+  Question 1:
+  Physical environment factors involve external conditions such as adverse weather conditions (e.g., wind, rain, snow) that impact the safety and performance of operations. Are physical environment factors like wind, rain, or snow contributing factors to this accident?
+
+  Question 2:
+  Tools and technology issues refer to failures, limitations, or inadequacies in equipment, software, automation, or technological systems that contribute to human errors or unsafe behaviors. Are tools or technology issues contributing factors to this accident?
+
+  Question 3:
+  Is the operational process one of the contributing factors to this accident?
+
+  Question 4:
+  Communication failures involve misunderstandings or incomplete information. Coordination issues refer to poor teamwork or unclear role assignments. Poor planning includes inadequate risk assessment or unrealistic scheduling. Are communication, coordination, or planning problems contributing factors to this accident?
+
+  Question 5:
+  Is not being fit for duty or responsibility one of the contributing factors to this accident?
+
+  Question 6:
+  Mental problems refer to These factors refer to cognitive, emotional, or psychological conditions that impact an operator's ability to perform safely and effectively. Are mental state or mental problems one of the contributing factors to this accident? Are mental state or mental problems one of the contributing factors to this accident?
+
+  Question 7:
+  Physiological state refers to the pilot's physical condition, such as fatigue, sleep deprivation, or the effects of medication or substance use. Is the physiological state one of the contributing factors to this accident?
+
+  Question 8:
+  Physical or mental limitations refer to biological or physiological constraints like impaired vision or hearing, which can impact performance and safety. Are physical or mental limitations one of the contributing factors to this accident?
+
+  Context:
+  {context}
+
+unsafe_acts_detailed: >
+  Using the helicopter accident report context below to answer the question. The outputs must be YES or NO. No other information or comment must be present.
+
+  Imagine five different experts are answering each question. All experts will write down YES or NO by thinking step by step. Once you have all the answers you will select the most-occuring answer as the final answer for each question. I want 5 answers.
+
+  Question 1:
+  Decision error refers to incorrect or poor choices made during critical moments that lead to unsafe conditions or accidents. Is decision error or making a wrong decision one of the contributing factors to this accident?
+
+  Question 2:
+  Skill-based errors occur when an individual inadvertently fails to perform a well-practiced task correctly due to slips, lapses, or motor coordination failures. Are skill-based errors contributing factors to this accident?
+
+  Question 3:
+  Perceptual error is when an individual misinterprets sensory information, leading to unsafe conditions or actions. Is perceptual error one of the contributing factors to this accident?
+
+  Question 4:
+  Routine violation occurs when individuals habitually break rules or procedures, which have become normalized over time and tolerated by the organization. Is routine violation one of the contributing factors to this accident?
+
+  Question 5:
+  Exceptional violation refers to rare, one-time rule violations that occur under extreme circumstances or pressure, unlike habitual routine violations. Is exceptional violation one of the contributing factors to this accident?
+
+  Context:
+  {context}

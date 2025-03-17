@@ -1,6 +1,6 @@
 <mxfile host="Electron" agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/26.1.1 Chrome/132.0.6834.210 Electron/34.3.3 Safari/537.36" version="26.1.1">
   <diagram name="Page-1" id="tCLOaL6wGDRcGgQHXbkz">
-    <mxGraphModel dx="1403" dy="341" grid="1" gridSize="1" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+    <mxGraphModel dx="979" dy="80" grid="1" gridSize="1" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -103,7 +103,7 @@
         <mxCell id="v1883fZIhXRqAfB3swYI-70" value="" style="verticalLabelPosition=bottom;verticalAlign=top;html=1;shape=mxgraph.basic.polygon;polyCoords=[[0.47,0],[0.95,0],[1,0],[0.63,1],[1,1],[0,1],[0,1],[0,0],[0.02,0],[0.2,0]];polyline=0;fillColor=light-dark(#f2f5fd, #1F2330);strokeWidth=2;rotation=90;strokeColor=none;gradientColor=light-dark(#cbd2e7, #ededed);fillStyle=solid;gradientDirection=north;" parent="1" vertex="1">
           <mxGeometry x="333.43" y="183.81" width="237.29" height="29.1" as="geometry" />
         </mxCell>
-        <mxCell id="VEXT5sOXVhfl4bzvslFz-1" value="&lt;b&gt;ToT:&amp;nbsp;&lt;/b&gt;Imagine five different experts are answering each question. All experts will write down YES or NO by thinking step by step. Once you have all the answers you will select the most-occuring answer as the final answer for each question. Is the lack of organizational culture one of the contributing factors to this accident?&lt;br&gt;Think through the answer step by step and provide the final answer." style="rounded=1;whiteSpace=wrap;arcSize=6;fontFamily=Menlo;fontSize=8;fillColor=#ffe6cc;strokeColor=#d79b00;align=left;html=1;spacingLeft=2;" vertex="1" parent="1">
+        <mxCell id="VEXT5sOXVhfl4bzvslFz-1" value="&lt;b&gt;ToT: &lt;/b&gt;Organizational influence in the HFACS model is the impact of an organization&#39;s culture, policies, and procedures on human performance and safety. Is organizational influence contributing to this accident? If yes, answer the following question:&amp;nbsp;Is the lack of organizational culture one of the contributing factors to this accident?&lt;br&gt;Think through the answer step by step and provide the final answer." style="rounded=1;whiteSpace=wrap;arcSize=6;fontFamily=Menlo;fontSize=8;fillColor=#ffe6cc;strokeColor=#d79b00;align=left;html=1;spacingLeft=2;" vertex="1" parent="1">
           <mxGeometry x="471" y="250" width="363" height="65" as="geometry" />
         </mxCell>
         <mxCell id="VEXT5sOXVhfl4bzvslFz-7" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;endArrow=blockThin;endFill=1;" edge="1" parent="1" source="VEXT5sOXVhfl4bzvslFz-2" target="VEXT5sOXVhfl4bzvslFz-4">
