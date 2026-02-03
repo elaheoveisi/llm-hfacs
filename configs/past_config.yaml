@@ -8,11 +8,9 @@ source_columns:
   HumanFactors: 'Person 1_Human Factors'
   Contributing: 'Assessments_Contributing Factors / Situations'
 
-hfacs_categories:
+# HFACS CATEGORY MAPPINGS
 
-  # =========================
-  # Level 1 — Unsafe Acts
-  # =========================
+hfacs_categories:
   Error:
     - 'Anomaly_Conflict Airborne Conflict'
     - 'Anomaly_Conflict Ground Conflict, Critical'
@@ -47,10 +45,6 @@ hfacs_categories:
     - 'Anomaly_Flight Deck / Cabin / Aircraft Event Passenger Misconduct'
     - 'Anomaly_Flight Deck / Cabin / Aircraft Event Passenger Electronic Device'
 
-
-  # =========================
-  # Level 2 — Preconditions
-  # =========================
   Situational_Factors:
     - 'Contributing_Weather'
     - 'Contributing_Environment - Non Weather Related'
@@ -80,45 +74,36 @@ hfacs_categories:
   Personnel_Factors:
     - 'HumanFactors_Communication Breakdown'
     - 'HumanFactors_Troubleshooting'
+    - 'HumanFactors_Training / Qualification'
     - 'HumanFactors_Human-Machine Interface'
 
   Condition_of_Operators:
     - 'HumanFactors_Confusion'
     - 'HumanFactors_Distraction'
     - 'HumanFactors_Situational Awareness'
+    - 'HumanFactors_Time Pressure'
+    - 'HumanFactors_Workload'
     - 'HumanFactors_Other / Unknown'
+    - 'HumanFactors_Fatigue'
     - 'HumanFactors_Physiological - Other'
 
-
-  # =========================
-  # Level 3 — Unsafe Supervision
-  # =========================
   Inadequate_Supervision:
     - 'Contributing_Staffing'
     - 'Contributing_Manuals'
-    - 'HumanFactors_Training / Qualification'
 
-  Failed_to_Correct_Problem:
-    - 'Contributing_MEL'
-    - 'Contributing_Procedure'
+  # There are very few categories, so doing conditional probability would give us wrong answers.
+  # Failure_to_Correct:
+  #   - "Contributing_MEL"
 
-  Planned_Inappropriate_Operations:
-    - 'HumanFactors_Time Pressure'
-    - 'HumanFactors_Workload'
-    - 'HumanFactors_Fatigue'
-
-  Supervisory_Violation:
-    - 'Contributing_Company Policy'
-
-
-  # =========================
-  # Level 4 — Organizational Influences
-  # =========================
   Organizational_Process:
     - 'Contributing_Chart Or Publication'
     - 'Contributing_Logbook Entry'
+    - 'Contributing_Procedure'
+    - 'Contributing_Manuals'
+    - 'Contributing_MEL'
 
   Organizational_Climate:
+    - 'Contributing_Company Policy'
     - 'Contributing_Human Factors'
 
   Resource_Management:
@@ -129,3 +114,4 @@ hfacs_categories:
     - 'Contributing_Airspace Structure'
     - 'Contributing_ATC Equipment / Nav Facility / Buildings'
     - 'Contributing_Equipment / Tooling'
+    - 'Contributing_Staffing'
