@@ -1,4 +1,7 @@
 import pandas as pd
+import os
+import tempfile
+from datetime import datetime
 
 
 def load_raw_dataset(path, save_cleaned=True):
@@ -67,5 +70,49 @@ def create_hfacs_categories(df, category_map, save_step=True):
 
 
 def save_outputs(df, csv_path, excel_path):
-    df.to_csv(csv_path, index=False)
-    df.to_excel(excel_path, index=False)
+    # Ensure output directories exist
+    csv_dir = os.path.dirname(csv_path) or "."
+    excel_dir = os.path.dirname(excel_path) or "."
+    os.makedirs(csv_dir, exist_ok=True)
+    os.makedirs(excel_dir, exist_ok=True)
+
+    # Write CSV to a temp file in the same dir, then atomically replace
+    tmp_csv_fd, tmp_csv_path = tempfile.mkstemp(suffix=".csv", dir=csv_dir)
+    os.close(tmp_csv_fd)
+    try:
+        df.to_csv(tmp_csv_path, index=False)
+        try:
+            os.replace(tmp_csv_path, csv_path)
+        except PermissionError:
+            # target may be locked; fall back to timestamped file
+            ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+            fallback = os.path.splitext(csv_path)[0] + f"_{ts}.csv"
+            os.replace(tmp_csv_path, fallback)
+            print(f"[WARN] Could not replace {csv_path}; wrote fallback {fallback}")
+    except Exception:
+        if os.path.exists(tmp_csv_path):
+            try:
+                os.remove(tmp_csv_path)
+            except Exception:
+                pass
+        raise
+
+    # Write Excel similarly
+    tmp_xl_fd, tmp_xl_path = tempfile.mkstemp(suffix=".xlsx", dir=excel_dir)
+    os.close(tmp_xl_fd)
+    try:
+        df.to_excel(tmp_xl_path, index=False)
+        try:
+            os.replace(tmp_xl_path, excel_path)
+        except PermissionError:
+            ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+            fallback_xl = os.path.splitext(excel_path)[0] + f"_{ts}.xlsx"
+            os.replace(tmp_xl_path, fallback_xl)
+            print(f"[WARN] Could not replace {excel_path}; wrote fallback {fallback_xl}")
+    except Exception:
+        if os.path.exists(tmp_xl_path):
+            try:
+                os.remove(tmp_xl_path)
+            except Exception:
+                pass
+        raise

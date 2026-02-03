@@ -14,6 +14,9 @@ HFACS_ORDER = [
     # Level 3 — Unsafe Supervision
     [
         "Inadequate_Supervision",
+        "Planned_Inappropriate_Operations",
+        "Failed_to_Correct_Problem",
+        "Supervisory_Violation",
     ],
     # Level 2 — Preconditions for Unsafe Acts
     [
