@@ -7,9 +7,9 @@ import pandas as pd
 HFACS_ORDER = [
     # Level 4 — Organizational Influences
     [
-        "Organizational_Process",
+        
         "Organizational_Climate",
-        "Resource_Management",
+        "Resource_Management/Organizational_Process",
     ],
     # Level 3 — Unsafe Supervision
     [
@@ -40,10 +40,11 @@ def conditional_probabilities_hfacs(df, parents, children, parent_label):
     rows = []
 
     for parent in parents:
-        if parent not in df.columns:
+        parent_col = _resolve_column(parent, df.columns)
+        if parent_col is None:
             raise ValueError(f"Missing HFACS column: {parent}")
 
-        df_parent = df[df[parent] == 1]
+        df_parent = df[df[parent_col] == 1]
         n = len(df_parent)
 
         row = {
@@ -56,13 +57,46 @@ def conditional_probabilities_hfacs(df, parents, children, parent_label):
                 row[f"P_{child}"] = 0.0
         else:
             for child in children:
-                if child not in df.columns:
+                child_col = _resolve_column(child, df.columns)
+                if child_col is None:
                     raise ValueError(f"Missing HFACS column: {child}")
-                row[f"P_{child}"] = round(df_parent[child].mean(), 4)
+                row[f"P_{child}"] = round(df_parent[child_col].mean(), 4)
 
         rows.append(row)
 
     return pd.DataFrame(rows)
+
+
+def _resolve_column(name, columns):
+    """Return the actual column name in `columns` that matches `name`.
+
+    Matching strategy (in order):
+    - exact match
+    - any column that endswith '/' + last_segment_of(name)
+    - any column that endswith last_segment_of(name)
+    - any column that, when '/' replaced with '_', equals name
+    """
+    cols = list(columns)
+    if name in cols:
+        return name
+
+    last = name.split("/")[-1]
+
+    # exact suffix with slash
+    for c in cols:
+        if c.endswith(f"/{last}"):
+            return c
+
+    # suffix without slash
+    for c in cols:
+        if c.endswith(last):
+            return c
+
+    # try underscore variant
+    alt = name.replace("/", "_")
+    if alt in cols:
+        return alt
+    return None
 
 
 def compute_hfacs_ordered_probabilities(

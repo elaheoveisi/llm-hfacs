@@ -114,14 +114,12 @@ hfacs_categories:
   # =========================
   # Level 4 — Organizational Influences
   # =========================
-  Organizational_Process:
-    - 'Contributing_Chart Or Publication'
-    - 'Contributing_Logbook Entry'
+  
 
   Organizational_Climate:
     - 'Contributing_Human Factors'
 
-  Resource_Management:
+  "Resource_Management/Organizational_Process":
     - 'Contributing_Incorrect / Not Installed / Unavailable Part'
     - 'Contributing_Software and Automation'
     - 'Contributing_Aircraft'
@@ -129,3 +127,9 @@ hfacs_categories:
     - 'Contributing_Airspace Structure'
     - 'Contributing_ATC Equipment / Nav Facility / Buildings'
     - 'Contributing_Equipment / Tooling'
+    - 'Contributing_Chart Or Publication'
+    - 'Contributing_Logbook Entry'  
+    
+
+    
+
