@@ -253,8 +253,19 @@ def plot_hfacs_layered(G: nx.DiGraph, save_path: str = None) -> None:
 
 	plt.figure(figsize=(10, 6))
 	weights = [G[u][v].get("weight", 0.0) for u, v in G.edges()]
-	nx.draw_networkx_nodes(G, pos, node_size=1000, node_color="#ffd966")
-	nx.draw_networkx_edges(G, pos, width=[max(0.25, w * 6) for w in weights], arrows=True)
+	edge_widths = [max(0.5, w * 6) for w in weights]
+	nx.draw_networkx_nodes(G, pos, node_size=1000, node_color="#ffd966", edgecolors="black")
+	# Draw directed edges with visible arrowheads. Use a small curvature to separate parallel edges.
+	nx.draw_networkx_edges(
+		G,
+		pos,
+		width=edge_widths,
+		arrows=True,
+		arrowstyle='-|>',
+		arrowsize=20,
+		connectionstyle='arc3,rad=0.08',
+		edge_color='gray',
+	)
 	nx.draw_networkx_labels(G, pos, font_size=9)
 	plt.axis("off")
 	if save_path:
