@@ -150,7 +150,7 @@ with skip_run("run", "hfacs_dag") as check:
         G, edge_df = run_hfacs_dag(df, config, output_dir=processed_dir)
         # try to produce a layered PNG visualization (optional dependency: matplotlib)
         try:
-            plot_hfacs_layered(G, save_path=str(Path(processed_dir) / "hfacs_dag.png"))
+            plot_hfacs_layered(G, save_path=str(Path(processed_dir) / "hfacs_dag.pdf"))
         except Exception:
             pass
         print("[INFO] HFACS DAG exported to:")
