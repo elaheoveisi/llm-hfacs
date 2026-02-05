@@ -1,5 +1,10 @@
 import yaml
 import os
+from pathlib import Path
+
+import yaml
+import os
+from pathlib import Path
 
 from data.dataset import (
     create_hfacs_categories,
@@ -13,6 +18,8 @@ from features.hfacs_order_probability import (
     compute_combined_hfacs_matrix,
     compute_hfacs_ordered_probabilities,
 )
+from features.hfacs_dag import run_hfacs_dag, plot_hfacs_layered
+from utils import skip_run
 from utils import skip_run
 
 # HFACS chain function
@@ -25,6 +32,7 @@ with open("./configs/config.yaml", "r") as f:
 paths = config["paths"]
 source_columns = config["source_columns"]
 hfacs_map = config["hfacs_categories"]
+processed_dir = os.path.dirname(paths["processed_csv"]) or "./data/processed"
 
 
 with skip_run("run", "load_raw_dataset") as check:
@@ -134,3 +142,18 @@ with skip_run("run", "hfacs_combined_matrix") as check:
 
         print("[INFO] Combined HFACS matrix saved.")
         print(combined_df)
+
+
+with skip_run("run", "hfacs_dag") as check:
+    if check():
+        print("[INFO] Building HFACS DAG and exports...")
+        G, edge_df = run_hfacs_dag(df, config, output_dir=processed_dir)
+        # try to produce a layered PNG visualization (optional dependency: matplotlib)
+        try:
+            plot_hfacs_layered(G, save_path=str(Path(processed_dir) / "hfacs_dag.png"))
+        except Exception:
+            pass
+        print("[INFO] HFACS DAG exported to:")
+        print(f" - {processed_dir}/hfacs_dag.dot (if pydot installed)")
+        print(f" - {processed_dir}/hfacs_dag_edges.csv")
+        print(f" - {processed_dir}/hfacs_dag_adjacency_matrix.csv")
