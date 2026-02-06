@@ -157,3 +157,53 @@ with skip_run("run", "hfacs_dag") as check:
         print(f" - {processed_dir}/hfacs_dag.dot (if pydot installed)")
         print(f" - {processed_dir}/hfacs_dag_edges.csv")
         print(f" - {processed_dir}/hfacs_dag_adjacency_matrix.csv")
+
+
+# Also print HFACS category totals across the dataset (if available)
+try:
+    from scripts.count_hfacs import count_hfacs
+except Exception as imp_err:
+    # try a robust fallback: load the module directly from the scripts file
+    try:
+        import importlib.util
+
+        scripts_file = Path.cwd() / "scripts" / "count_hfacs.py"
+        if scripts_file.exists():
+            spec = importlib.util.spec_from_file_location("count_hfacs", str(scripts_file))
+            mod = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)  # type: ignore[attr-defined]
+            count_hfacs = getattr(mod, "count_hfacs")
+        else:
+            raise FileNotFoundError(f"{scripts_file} not found")
+    except Exception as load_err:
+        print(f"[WARN] Cannot import count_hfacs: {imp_err}; fallback failed: {load_err}")
+        count_hfacs = None
+
+if callable(globals().get("count_hfacs", None)):
+    try:
+        csv_path = Path(processed_dir) / "step3_hfacs_categories.csv"
+        counts, total_rows = count_hfacs(csv_path)
+        print("[INFO] HFACS category totals across dataset:")
+        print(f"Total rows: {total_rows}")
+        for k, v in counts.items():
+            print(f" - {k}: {v}")
+
+        # save counts to CSV
+        out_csv = Path(processed_dir) / "hfacs_category_counts.csv"
+        try:
+            import csv as _csv
+
+            out_csv.parent.mkdir(parents=True, exist_ok=True)
+            with out_csv.open("w", newline="", encoding="utf-8") as cf:
+                writer = _csv.writer(cf)
+                writer.writerow(["category", "count"])
+                for k, v in counts.items():
+                    writer.writerow([k, v])
+                writer.writerow(["__total_rows", total_rows])
+            print(f"[INFO] HFACS counts saved to: {out_csv}")
+        except Exception as werr:
+            print(f"[WARN] Failed to write counts CSV: {werr}")
+    except Exception as e:
+        print(f"[WARN] Could not compute HFACS counts: {e}")
+else:
+    print("[INFO] HFACS counting function not available; skipping counts.")
