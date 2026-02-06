@@ -275,4 +275,3 @@ def plot_hfacs_layered(G: nx.DiGraph, save_path: str = None) -> None:
 	else:
 		plt.show()
 
-
