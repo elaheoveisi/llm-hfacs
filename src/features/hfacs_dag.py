@@ -266,7 +266,18 @@ def plot_hfacs_layered(G: nx.DiGraph, save_path: str = None) -> None:
 		connectionstyle='arc3,rad=0.08',
 		edge_color='gray',
 	)
-	nx.draw_networkx_labels(G, pos, font_size=9)
+	# build readable labels: replace underscores with spaces, but
+	# special-case some long names to improve layout/readability
+	labels = {}
+	for n in G.nodes():
+		if n == "Resource_Management/Organizational_Process":
+			labels[n] = "Resource Management\nOrganizational Process"
+		elif n == "Failed_to_Correct_Problem":
+			labels[n] = "Failed to\nCorrect Problem"
+		else:
+			labels[n] = n.replace("_", " ")
+
+	nx.draw_networkx_labels(G, pos, labels=labels, font_size=9)
 	plt.axis("off")
 	if save_path:
 		Path(save_path).parent.mkdir(parents=True, exist_ok=True)
