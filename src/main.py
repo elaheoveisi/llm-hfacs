@@ -1,17 +1,9 @@
 import yaml
 import os
 from pathlib import Path
+import csv
+import pandas as pd
 
-import yaml
-import os
-from pathlib import Path
-
-from data.dataset import (
-    create_hfacs_categories,
-    extract_factor_columns,
-    load_raw_dataset,
-    save_outputs,
-)
 from features.hfacs_order_probability import (
     HFACS_ORDER,
     compute_all_full_hfacs_chains,
@@ -20,10 +12,21 @@ from features.hfacs_order_probability import (
 )
 from features.hfacs_dag import run_hfacs_dag, plot_hfacs_layered
 from utils import skip_run
-from utils import skip_run
 
 # HFACS chain function
 # from models.prediction import compute_full_chain
+
+
+def read_csv_robust(csv_path: Path) -> pd.DataFrame:
+    try:
+        return pd.read_csv(csv_path)
+    except Exception as e:
+        print(f"[WARN] pandas read_csv failed for {csv_path}: {e}")
+        print("[INFO] Retrying with Python csv parser fallback...")
+        with csv_path.open("r", encoding="utf-8", errors="replace", newline="") as f:
+            reader = csv.DictReader(f)
+            rows = list(reader)
+        return pd.DataFrame(rows)
 
 
 with open("./configs/config.yaml", "r") as f:
@@ -33,73 +36,26 @@ paths = config["paths"]
 source_columns = config["source_columns"]
 hfacs_map = config["hfacs_categories"]
 processed_dir = os.path.dirname(paths["processed_csv"]) or "./data/processed"
+processed_csv_path = Path(paths["processed_csv"])
+
+if not processed_csv_path.exists():
+    raise FileNotFoundError(
+        f"Processed dataset not found: {processed_csv_path}. "
+        "This pipeline is configured to use processed_output.csv as the source dataset."
+    )
+
+print(f"[INFO] Using existing processed dataset: {processed_csv_path}")
+df = read_csv_robust(processed_csv_path)
 
 
 with skip_run("run", "load_raw_dataset") as check:
     if check():
-        print("[INFO] Loading raw dataset...")
-        df = load_raw_dataset(
-            paths["raw_data"],
-            save_cleaned=True,
-        )
-        print("[INFO] Raw shape:", df.shape)
+        print("[INFO] Skipping raw dataset load (using processed_output.csv).")
 
 
 with skip_run("run", "create_hfacs_category_data") as check:
     if check():
-        print("[INFO] Extracting factor columns...")
-        df = extract_factor_columns(
-            df,
-            source_columns,
-            save_step=True,
-        )
-        print("[INFO] Creating HFACS categories...")
-        df = create_hfacs_categories(
-            df,
-            hfacs_map,
-            save_step=True,
-        )
-        # ensure output directories exist before saving
-        csv_dir = os.path.dirname(paths["processed_csv"]) or "."
-        excel_dir = os.path.dirname(paths["processed_excel"]) or "."
-        os.makedirs(csv_dir, exist_ok=True)
-        os.makedirs(excel_dir, exist_ok=True)
-
-        csv_path = paths["processed_csv"]
-        excel_path = paths["processed_excel"]
-
-        try:
-            save_outputs(
-                df,
-                csv_path,
-                excel_path,
-            )
-            print("[INFO] Saved CSV & Excel")
-        except PermissionError as e:
-            print(f"[ERROR] Permission denied writing {csv_path}: {e}")
-            # diagnostics and best-effort fix: try to make file writable and retry
-            try:
-                if os.path.exists(csv_path):
-                    os.chmod(csv_path, 0o666)
-                    print(f"[INFO] Changed permissions for {csv_path}, retrying...")
-                    save_outputs(df, csv_path, excel_path)
-                    print("[INFO] Saved CSV & Excel after chmod")
-                else:
-                    print("[ERROR] Target file does not exist. Checking directory permissions...")
-                    print(" - dir exists:", os.path.exists(csv_dir))
-                    print(" - dir writable:", os.access(csv_dir, os.W_OK))
-                    raise
-            except Exception as e2:
-                print(f"[ERROR] Retry failed: {e2}")
-                print("Diagnostic:")
-                try:
-                    print(" - file exists:", os.path.exists(csv_path))
-                    print(" - file writable:", os.access(csv_path, os.W_OK))
-                    print(" - dir exists:", os.path.exists(csv_dir))
-                    print(" - dir writable:", os.access(csv_dir, os.W_OK))
-                except Exception:
-                    pass
-                raise
+        print("[INFO] Skipping HFACS regeneration/writes (using processed_output.csv).")
 
 
 with skip_run("run", "hfacs_ordered_probabilities") as check:
@@ -159,51 +115,60 @@ with skip_run("run", "hfacs_dag") as check:
         print(f" - {processed_dir}/hfacs_dag_adjacency_matrix.csv")
 
 
-# Also print HFACS category totals across the dataset (if available)
-try:
-    from scripts.count_hfacs import count_hfacs
-except Exception as imp_err:
-    # try a robust fallback: load the module directly from the scripts file
-    try:
-        import importlib.util
-
-        scripts_file = Path.cwd() / "scripts" / "count_hfacs.py"
-        if scripts_file.exists():
-            spec = importlib.util.spec_from_file_location("count_hfacs", str(scripts_file))
-            mod = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(mod)  # type: ignore[attr-defined]
-            count_hfacs = getattr(mod, "count_hfacs")
-        else:
-            raise FileNotFoundError(f"{scripts_file} not found")
-    except Exception as load_err:
-        print(f"[WARN] Cannot import count_hfacs: {imp_err}; fallback failed: {load_err}")
-        count_hfacs = None
-
-if callable(globals().get("count_hfacs", None)):
-    try:
-        csv_path = Path(processed_dir) / "step3_hfacs_categories.csv"
-        counts, total_rows = count_hfacs(csv_path)
-        print("[INFO] HFACS category totals across dataset:")
-        print(f"Total rows: {total_rows}")
-        for k, v in counts.items():
-            print(f" - {k}: {v}")
-
-        # save counts to CSV
-        out_csv = Path(processed_dir) / "hfacs_category_counts.csv"
+with skip_run("run", "bayesian") as check:
+    if check():
+        print("[INFO] Running Bayesian HFACS processing...")
         try:
-            import csv as _csv
+            from features import bayesian as bayesian_module
 
-            out_csv.parent.mkdir(parents=True, exist_ok=True)
-            with out_csv.open("w", newline="", encoding="utf-8") as cf:
-                writer = _csv.writer(cf)
-                writer.writerow(["category", "count"])
-                for k, v in counts.items():
-                    writer.writerow([k, v])
-                writer.writerow(["__total_rows", total_rows])
-            print(f"[INFO] HFACS counts saved to: {out_csv}")
-        except Exception as werr:
-            print(f"[WARN] Failed to write counts CSV: {werr}")
-    except Exception as e:
-        print(f"[WARN] Could not compute HFACS counts: {e}")
-else:
-    print("[INFO] HFACS counting function not available; skipping counts.")
+            edges_csv = Path(processed_dir) / "hfacs_dag_edges.csv"
+            out_dir = Path(processed_dir)
+            out_dir.mkdir(parents=True, exist_ok=True)
+
+            df_bayes = bayesian_module.load_edges_csv(str(edges_csv))
+            allowed = bayesian_module.allowed_edges_from_hierarchy(bayesian_module.default_hfacs_hierarchy())
+            before = len(df_bayes)
+            df_bayes = df_bayes[
+                df_bayes.apply(lambda r: (r["parent"], r["child"]) in allowed, axis=1)
+            ].copy()
+            removed = before - len(df_bayes)
+            if removed > 0:
+                print(f"Removed {removed} illegal edges not in HFACS hierarchy ✅")
+
+            df_bayes["w_bayes"] = df_bayes.apply(
+                lambda r: bayesian_module.bayes_edge_mean(
+                    int(r["N_joint"]),
+                    int(r["N_parent"]),
+                    1.0,
+                    1.0,
+                ),
+                axis=1,
+            )
+
+            df_bayes.to_csv(out_dir / "hfacs_bayesian_dag_edges.csv", index=False)
+            bayesian_module.draw_dag_pdf(
+                df_bayes,
+                str(out_dir / "bayesian_dag.pdf"),
+                "Bayesian HFACS DAG (thickness=weight)",
+            )
+
+            pruned = bayesian_module.hillclimb_prune_edges_removal_only(
+                df_bayes,
+                alpha=1.0,
+                beta=1.0,
+                min_keep_score=-5.0,
+            )
+            pruned.to_csv(out_dir / "hfacs_bayesian_dag_edges_hillclimb_pruned.csv", index=False)
+            bayesian_module.draw_dag_pdf(
+                pruned,
+                str(out_dir / "bayesian_dag_hillclimb.pdf"),
+                "Bayesian HFACS DAG (after hillclimb pruning)",
+            )
+
+            print("[INFO] Bayesian HFACS processing complete.")
+        except Exception as e:
+            print(f"[ERROR] Bayesian processing failed: {e}")
+
+
+# Also print HFACS category totals across the dataset (if available)
+#
