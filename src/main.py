@@ -133,7 +133,7 @@ with skip_run("run", "bayesian") as check:
             ].copy()
             removed = before - len(df_bayes)
             if removed > 0:
-                print(f"Removed {removed} illegal edges not in HFACS hierarchy ✅")
+                print(f"Removed {removed} illegal edges not in HFACS hierarchy ")
 
             df_bayes["w_bayes"] = df_bayes.apply(
                 lambda r: bayesian_module.bayes_edge_mean(
@@ -152,17 +152,17 @@ with skip_run("run", "bayesian") as check:
                 "Bayesian HFACS DAG (thickness=weight)",
             )
 
-            pruned = bayesian_module.hillclimb_prune_edges_removal_only(
+            pruned = bayesian_module.threshold_prune_edges(
                 df_bayes,
                 alpha=1.0,
                 beta=1.0,
                 min_keep_score=-5.0,
             )
-            pruned.to_csv(out_dir / "hfacs_bayesian_dag_edges_hillclimb_pruned.csv", index=False)
+            pruned.to_csv(out_dir / "hfacs_bayesian_dag_edges_threshold_pruned.csv", index=False)
             bayesian_module.draw_dag_pdf(
                 pruned,
-                str(out_dir / "bayesian_dag_hillclimb.pdf"),
-                "Bayesian HFACS DAG (after hillclimb pruning)",
+                str(out_dir / "bayesian_dag_threshold_pruned.pdf"),
+                "Bayesian HFACS DAG (after threshold pruning)",
             )
 
             print("[INFO] Bayesian HFACS processing complete.")

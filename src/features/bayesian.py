@@ -73,7 +73,7 @@ def load_edges_csv(edges_csv: str) -> pd.DataFrame:
     return df
 
 
-def bayes_edge_mean(k: int, n: int, alpha: float = 1.0, beta: float = 0.95) -> float:
+def bayes_edge_mean(k: int, n: int, alpha: float = 1.0, beta: float = 1.0) -> float:
     if n <= 0:
         return 0.0
     a = alpha + k
@@ -88,7 +88,7 @@ def edge_keep_score(k: int, n: int, alpha: float, beta: float) -> float:
     return (w - 0.5) * (n**0.5)
 
 
-def hillclimb_prune_edges_removal_only(
+def threshold_prune_edges(
     df_edges: pd.DataFrame,
     alpha: float = 1.0,
     beta: float = 1.0,
