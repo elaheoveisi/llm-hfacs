@@ -112,7 +112,7 @@ ENV/
 .idea/
 
 # Data folder
-data/*
+#data/*
 
 # Config
 configs/config.yaml

@@ -1,0 +1,5 @@
+HFACS_L3_category,N_cases,P_Condition_of_Operators,P_Personnel_Factors,P_Situational_Factors
+Inadequate_Supervision,612,0.6667,0.3399,0.8284
+Planned_Inappropriate_Operations,584,0.7175,0.536,0.9178
+Failed_to_Correct_Problem,685,0.7942,0.6307,0.8686
+Supervisory_Violation,102,0.7255,0.6765,0.7745
