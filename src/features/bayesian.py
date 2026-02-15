@@ -72,7 +72,8 @@ def load_edges_csv(edges_csv: str) -> pd.DataFrame:
     df["N_joint"] = pd.to_numeric(df["N_joint"], errors="raise").astype(int)
     return df
 
-
+#Bayesian estimate of the probability that a child node occurs given its parent node, using a Beta prior
+#voids zero/one probabilities when counts are small
 def bayes_edge_mean(k: int, n: int, alpha: float = 1.0, beta: float = 1.0) -> float:
     if n <= 0:
         return 0.0
@@ -80,19 +81,19 @@ def bayes_edge_mean(k: int, n: int, alpha: float = 1.0, beta: float = 1.0) -> fl
     b = beta + (n - k)
     return a / (a + b)
 
-
+#w is the result of calling the function bayes_edge_mean
 def edge_keep_score(k: int, n: int, alpha: float, beta: float) -> float:
     if n <= 0:
         return -1e9
     w = bayes_edge_mean(k, n, alpha, beta)
-    return (w - 0.5) * (n**0.5)
+    return (w - 0.5) * (n**0.5) # w−0.5 measures how much the edge's probability deviates from random chance (0.5).
 
 
 def threshold_prune_edges(
     df_edges: pd.DataFrame,
     alpha: float = 1.0,
     beta: float = 1.0,
-    min_keep_score: float = -5,
+    min_keep_score: float = 0,
 ) -> pd.DataFrame:
     work = df_edges.copy()
     work["keep_score"] = work.apply(
