@@ -170,10 +170,10 @@ with skip_run("skip", "bayesian") as check:
             print(f"[ERROR] Bayesian processing failed: {e}")
 
 
-with skip_run("skip", "svm") as check:
+with skip_run("run", "svm") as check:
     if check():
         print("[INFO] Running SVM analysis...")
-        from features.svm import run_svm_analysis
+        from features.svm2 import run_svm_analysis
 
         svm_cfg = config.get("svm", {})
         svm_data_path = Path(processed_dir) / svm_cfg.get("data_file", "step3_hfacs_categories.csv")

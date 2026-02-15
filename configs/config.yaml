@@ -128,8 +128,20 @@ hfacs_categories:
     - 'Contributing_ATC Equipment / Nav Facility / Buildings'
     - 'Contributing_Equipment / Tooling'
     - 'Contributing_Chart Or Publication'
-    - 'Contributing_Logbook Entry'  
-    
+    - 'Contributing_Logbook Entry'
 
-    
+
+svm:
+  data_file: 'step3_hfacs_categories.csv'   # relative to processed_dir
+  feature_columns:                           # Level-2 (preconditions)
+    - Condition_of_Operators
+    - Personnel_Factors
+    - Situational_Factors
+  target_columns:                            # Level-1 (unsafe acts)
+    - Error
+    - Violation
+  test_size: 0.15
+  seed: 7
+  degree_grid: [2, 3]
+  c_grid: [0.01, 0.1, 1, 10, 100]
 

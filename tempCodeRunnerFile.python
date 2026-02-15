@@ -1,195 +1,63 @@
-from __future__ import annotations
-
-from pathlib import Path
-from typing import Dict, List, Set, Tuple
-
 import pandas as pd
-import networkx as nx
-import matplotlib.pyplot as plt
+from pathlib import Path
+
+from sklearn.model_selection import train_test_split, GridSearchCV, StratifiedKFold
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import PolynomialFeatures
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import classification_report, roc_auc_score
+
+def resolve_data_file(filename: str) -> Path:
+    start = Path(__file__).resolve().parent
+    for base in (start, *start.parents):
+        candidate = base / "data" / "processed" / filename
+        if candidate.exists():
+            return candidate
+    raise FileNotFoundError(f"Could not find {filename} under any parent data/processed directory.")
 
 
-# ----------------------------
-# HFACS strict structure
-# ----------------------------
-def default_hfacs_hierarchy() -> Dict[str, List[str]]:
-    return {
-        "Organizational_Climate": [
-            "Inadequate_Supervision",
-            "Failed_to_Correct_Problem",
-            "Planned_Inappropriate_Operations",
-            "Supervisory_Violation",
-        ],
-        "Resource_Management/Organizational_Process": [
-            "Inadequate_Supervision",
-            "Failed_to_Correct_Problem",
-            "Planned_Inappropriate_Operations",
-            "Supervisory_Violation",
-        ],
-        "Inadequate_Supervision": ["Condition_of_Operators", "Personnel_Factors", "Situational_Factors"],
-        "Failed_to_Correct_Problem": ["Condition_of_Operators", "Personnel_Factors", "Situational_Factors"],
-        "Planned_Inappropriate_Operations": ["Condition_of_Operators", "Personnel_Factors", "Situational_Factors"],
-        "Supervisory_Violation": ["Condition_of_Operators", "Personnel_Factors", "Situational_Factors"],
-        "Condition_of_Operators": ["Error", "Violation"],
-        "Personnel_Factors": ["Error", "Violation"],
-        "Situational_Factors": ["Error", "Violation"],
-    }
+data_path = resolve_data_file("step3_hfacs_categories.csv")
+df = pd.read_csv(data_path)
 
+# ---- X (features) ----
+Xcols = ["Condition_of_Operators", "Personnel_Factors", "Situational_Factors"]
+X = df[Xcols].astype(int)
 
-def hfacs_layers() -> List[List[str]]:
-    return [
-        ["Organizational_Climate", "Resource_Management/Organizational_Process"],
-        ["Inadequate_Supervision", "Failed_to_Correct_Problem", "Planned_Inappropriate_Operations", "Supervisory_Violation"],
-        ["Condition_of_Operators", "Personnel_Factors", "Situational_Factors"],
-        ["Error", "Violation"],
-    }
+# ---- Y (two labels) ----
+Ycols = ["Error", "Violation"]
+Y = df[Ycols].astype(int)
 
+# Optional: stratify by label-pattern (00,01,10,11) if possible
+strat = Y.astype(str).agg("".join, axis=1)
+try:
+    Xtr, Xte, Ytr, Yte = train_test_split(X, Y, test_size=0.2, random_state=7, stratify=strat)
+except ValueError:
+    # fallback if some patterns are too rare
+    Xtr, Xte, Ytr, Yte = train_test_split(X, Y, test_size=0.2, random_state=7, stratify=Y["Violation"])
 
-def allowed_edges_from_hierarchy(h: Dict[str, List[str]]) -> Set[Tuple[str, str]]:
-    return {(p, c) for p, children in h.items() for c in children}
+# ---- pipeline ----
+pipe = Pipeline([
+    ("poly", PolynomialFeatures(include_bias=False, interaction_only=True)),
+    ("clf", LogisticRegression(max_iter=5000, class_weight="balanced", solver="liblinear")),
+])
 
+param_grid = {
+    "poly__degree": [1, 2],             # 1=no interactions, 2=pairwise interactions
+    "clf__C": [0.01, 0.1, 1, 10, 100],
+}
 
-def layered_positions(layers: List[List[str]], x_gap: float = 3.3, y_gap: float = 2.8):
-    pos = {}
-    top_y = (len(layers) - 1) * y_gap
-    for i, layer_nodes in enumerate(layers):
-        y = top_y - i * y_gap
-        n = len(layer_nodes)
-        x0 = -((n - 1) * x_gap) / 2
-        for j, node in enumerate(layer_nodes):
-            pos[node] = (x0 + j * x_gap, y)
-    return pos
+cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=7)
 
+# ---- train + evaluate one model per label ----
+for target in Ycols:
+    gs = GridSearchCV(pipe, param_grid, scoring="f1", cv=cv)
+    gs.fit(Xtr, Ytr[target])
 
-# ----------------------------
-# Bayesian weight + pruning
-# ----------------------------
-def bayes_edge_mean(k: int, n: int, alpha: float = 1.0, beta: float = 1.0) -> float:
-    if n <= 0:
-        return 0.0
-    a = alpha + k
-    b = beta + (n - k)
-    return a / (a + b)
+    pred = gs.predict(Xte)
+    proba = gs.predict_proba(Xte)[:, 1]
 
-
-def edge_keep_score(k: int, n: int, alpha: float, beta: float) -> float:
-    if n <= 0:
-        return -1e9
-    w = bayes_edge_mean(k, n, alpha, beta)
-    return (w - 0.5) * (n ** 0.5)
-
-
-def hillclimb_prune_edges_removal_only(
-    df_edges: pd.DataFrame, alpha: float = 1.0, beta: float = 1.0, min_keep_score: float = 0.0
-) -> pd.DataFrame:
-    work = df_edges.copy()
-    work["keep_score"] = work.apply(
-        lambda r: edge_keep_score(int(r["N_joint"]), int(r["N_parent"]), alpha, beta), axis=1
-    )
-    while len(work) > 0:
-        idx = work["keep_score"].idxmin()
-        if float(work.loc[idx, "keep_score"]) >= min_keep_score:
-            break
-        work = work.drop(index=idx)
-    return work.sort_values(["parent", "child"]).reset_index(drop=True)
-
-
-# ----------------------------
-# Robust repo paths + CSV load
-# ----------------------------
-def find_repo_root(start: Path) -> Path:
-    p = start.resolve()
-    for _ in range(8):
-        if (p / "data" / "processed").exists():
-            return p
-        if p.parent == p:
-            break
-        p = p.parent
-    raise FileNotFoundError("Could not find repo root containing data/processed.")
-
-
-def load_edges_csv(path: Path) -> pd.DataFrame:
-    if not path.exists():
-        raise FileNotFoundError(f"Missing file: {path}")
-    # your sample is a clean comma CSV; this is enough
-    return pd.read_csv(path, engine="python")
-
-
-# ----------------------------
-# Draw DAG (thickness = weight)
-# ----------------------------
-def draw_dag_pdf(
-    edge_table: pd.DataFrame,
-    pdf_path: Path,
-    title: str,
-    weight_col: str = "w_bayes",
-    weight_decimals: int = 3,
-    min_width: float = 0.8,
-    max_width: float = 7.0,
-):
-    G = nx.DiGraph()
-    for _, r in edge_table.iterrows():
-        G.add_edge(str(r["parent"]), str(r["child"]), weight=float(r[weight_col]))
-
-    pos = layered_positions(hfacs_layers())
-    missing = [n for n in G.nodes() if n not in pos]
-    if missing:
-        fb = nx.spring_layout(G, seed=7)
-        for n in missing:
-            pos[n] = fb[n]
-
-    weights = [d["weight"] for _, _, d in G.edges(data=True)]
-    w_min, w_max = min(weights), max(weights)
-    if abs(w_max - w_min) < 1e-12:
-        widths = [(min_width + max_width) / 2] * len(weights)
-    else:
-        widths = [min_width + (w - w_min) / (w_max - w_min) * (max_width - min_width) for w in weights]
-
-    plt.figure(figsize=(16, 10))
-    nx.draw_networkx_nodes(G, pos, node_size=2600)
-    nx.draw_networkx_labels(G, pos, font_size=9)
-    nx.draw_networkx_edges(G, pos, arrows=True, arrowsize=22, width=widths, connectionstyle="arc3,rad=0.06")
-
-    edge_labels = {(u, v): f"{d['weight']:.{weight_decimals}f}" for u, v, d in G.edges(data=True)}
-    nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels, font_size=8, label_pos=0.55)
-
-    plt.title(title)
-    plt.axis("off")
-    plt.tight_layout()
-    pdf_path.parent.mkdir(parents=True, exist_ok=True)
-    plt.savefig(pdf_path, format="pdf", bbox_inches="tight")
-    plt.close()
-
-    print("Saved:", str(pdf_path))
-    print("Nodes:", G.number_of_nodes(), "Edges:", G.number_of_edges(), "Is DAG?", nx.is_directed_acyclic_graph(G))
-
-
-def main():
-    repo = find_repo_root(Path(__file__))
-    edges_csv = repo / "data" / "processed" / "hfacs_dag_edges.csv"
-    out_dir = repo / "data" / "processed"
-
-    df = load_edges_csv(edges_csv)
-
-    required = {"parent", "child", "N_parent", "N_joint"}
-    if not required.issubset(df.columns):
-        raise ValueError(f"Need columns: {sorted(required)}")
-
-    df["parent"] = df["parent"].astype(str)
-    df["child"] = df["child"].astype(str)
-    df["N_parent"] = pd.to_numeric(df["N_parent"], errors="raise").astype(int)
-    df["N_joint"] = pd.to_numeric(df["N_joint"], errors="raise").astype(int)
-
-    allowed = allowed_edges_from_hierarchy(default_hfacs_hierarchy())
-    df = df[df.apply(lambda r: (r["parent"], r["child"]) in allowed, axis=1)].copy()
-
-    df["w_bayes"] = df.apply(lambda r: bayes_edge_mean(int(r["N_joint"]), int(r["N_parent"])), axis=1)
-    df.to_csv(out_dir / "hfacs_bayesian_dag_edges.csv", index=False)
-
-    draw_dag_pdf(df, out_dir / "bayesian_dag.pdf", "Bayesian HFACS DAG (thickness = w_bayes)")
-
-    pruned = hillclimb_prune_edges_removal_only(df, min_keep_score=0.0)
-    pruned.to_csv(out_dir / "hfacs_bayesian_dag_edges_hillclimb_pruned.csv", index=False)
-    draw_dag_pdf(pruned, out_dir / "bayesian_dag_hillclimb.pdf", "Bayesian HFACS DAG (pruned)")
-
-if __name__ == "__main__":
-    main()
+    print("\n==============================")
+    print("Target:", target)
+    print("Best:", gs.best_params_)
+    print(classification_report(Yte[target], pred, target_names=[f"no_{target}", target]))
+    print("AUC:", roc_auc_score(Yte[target], proba))
