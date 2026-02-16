@@ -1,3 +1,49 @@
+def run_bayesian_dag(processed_dir):
+    from features import bayesian as bayesian_module
+    edges_csv = Path(processed_dir) / "hfacs_dag_edges.csv"
+    out_dir = Path(processed_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    df_bayes = bayesian_module.load_edges_csv(str(edges_csv))
+    allowed = bayesian_module.allowed_edges_from_hierarchy(bayesian_module.default_hfacs_hierarchy())
+    before = len(df_bayes)
+    df_bayes = df_bayes[
+        df_bayes.apply(lambda r: (r["parent"], r["child"]) in allowed, axis=1)
+    ].copy()
+    removed = before - len(df_bayes)
+    if removed > 0:
+        print(f"Removed {removed} illegal edges not in HFACS hierarchy ")
+
+    df_bayes["w_bayes"] = df_bayes.apply(
+        lambda r: bayesian_module.bayes_edge_mean(
+            int(r["N_joint"]),
+            int(r["N_parent"]),
+            1.0,
+            1.0,
+        ),
+        axis=1,
+    )
+
+    df_bayes.to_csv(out_dir / "hfacs_bayesian_dag_edges.csv", index=False)
+    bayesian_module.draw_dag_pdf(
+        df_bayes,
+        str(out_dir / "bayesian_dag.pdf"),
+        "Bayesian HFACS DAG (thickness=weight)",
+    )
+
+    pruned = bayesian_module.threshold_prune_edges(
+        df_bayes,
+        alpha=1.0,
+        beta=1.0,
+        min_keep_score=-5.0,
+    )
+    pruned.to_csv(out_dir / "hfacs_bayesian_dag_edges_threshold_pruned.csv", index=False)
+    bayesian_module.draw_dag_pdf(
+        pruned,
+        str(out_dir / "bayesian_dag_threshold_pruned.pdf"),
+        "Bayesian HFACS DAG (after threshold pruning)",
+    )
+
 import yaml
 import os
 from pathlib import Path
@@ -13,6 +59,10 @@ from features.hfacs_order_probability import (
 from features.hfacs_dag import run_hfacs_dag, plot_hfacs_layered
 from utils import skip_run
 
+
+
+
+#
 # HFACS chain function
 # from models.prediction import compute_full_chain
 
@@ -118,56 +168,9 @@ with skip_run("run", "hfacs_dag") as check:
 with skip_run("skip", "bayesian") as check:
     if check():
         print("[INFO] Running Bayesian HFACS processing...")
-        try:
-            from features import bayesian as bayesian_module
+        run_bayesian_dag(processed_dir)
 
-            edges_csv = Path(processed_dir) / "hfacs_dag_edges.csv"
-            out_dir = Path(processed_dir)
-            out_dir.mkdir(parents=True, exist_ok=True)
 
-            df_bayes = bayesian_module.load_edges_csv(str(edges_csv))
-            allowed = bayesian_module.allowed_edges_from_hierarchy(bayesian_module.default_hfacs_hierarchy())
-            before = len(df_bayes)
-            df_bayes = df_bayes[
-                df_bayes.apply(lambda r: (r["parent"], r["child"]) in allowed, axis=1)
-            ].copy()
-            removed = before - len(df_bayes)
-            if removed > 0:
-                print(f"Removed {removed} illegal edges not in HFACS hierarchy ")
-
-            df_bayes["w_bayes"] = df_bayes.apply(
-                lambda r: bayesian_module.bayes_edge_mean(
-                    int(r["N_joint"]),
-                    int(r["N_parent"]),
-                    1.0,
-                    1.0,
-                ),
-                axis=1,
-            )
-
-            df_bayes.to_csv(out_dir / "hfacs_bayesian_dag_edges.csv", index=False)
-            bayesian_module.draw_dag_pdf(
-                df_bayes,
-                str(out_dir / "bayesian_dag.pdf"),
-                "Bayesian HFACS DAG (thickness=weight)",
-            )
-
-            pruned = bayesian_module.threshold_prune_edges(
-                df_bayes,
-                alpha=1.0,
-                beta=1.0,
-                min_keep_score=-5.0,
-            )
-            pruned.to_csv(out_dir / "hfacs_bayesian_dag_edges_threshold_pruned.csv", index=False)
-            bayesian_module.draw_dag_pdf(
-                pruned,
-                str(out_dir / "bayesian_dag_threshold_pruned.pdf"),
-                "Bayesian HFACS DAG (after threshold pruning)",
-            )
-
-            print("[INFO] Bayesian HFACS processing complete.")
-        except Exception as e:
-            print(f"[ERROR] Bayesian processing failed: {e}")
 
 
 with skip_run("skip", "svm") as check:
