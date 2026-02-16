@@ -123,7 +123,8 @@ def draw_dag_pdf(
     for _, r in edge_table.iterrows():
         G.add_edge(r["parent"], r["child"], weight=float(r[weight_col]))
 
-    pos = layered_positions(hfacs_layers())
+    # Increase y_gap to spread out layers and reduce overlap
+    pos = layered_positions(hfacs_layers(), y_gap=6.0)
 
     missing = [n for n in G.nodes() if n not in pos]
     if missing:
@@ -136,14 +137,22 @@ def draw_dag_pdf(
         raise ValueError("No edges to draw (edge_table is empty).")
 
     w_min, w_max = min(weights), max(weights)
+    # Use a larger range and exponential scaling for more visible differences
+    min_width = 1.0
+    max_width = 20.0
     if abs(w_max - w_min) < 1e-12:
         widths = [(min_width + max_width) / 2] * len(weights)
     else:
-        widths = [min_width + (w - w_min) / (w_max - w_min) * (max_width - min_width) for w in weights]
+        # Exponential scaling: emphasize larger weights
+        import numpy as np
+        normed = [(w - w_min) / (w_max - w_min) for w in weights]
+        widths = [min_width + (max_width - min_width) * (np.exp(n) - 1) / (np.e - 1) for n in normed]
 
-    plt.figure(figsize=(16, 10))
-    nx.draw_networkx_nodes(G, pos, node_size=2600)
-    nx.draw_networkx_labels(G, pos, font_size=9)
+    plt.figure(figsize=(66, 30))
+    nx.draw_networkx_nodes(G, pos, node_size=2600, node_shape='s')
+    # Draw labels inside boxes
+    for node, (x, y) in pos.items():
+        plt.text(x, y, node, fontsize=60, ha='center', va='center', bbox=dict(boxstyle='round,pad=0.4', fc='white', ec='black', lw=2))
     nx.draw_networkx_edges(
         G,
         pos,
@@ -154,7 +163,8 @@ def draw_dag_pdf(
     )
 
     edge_labels = {(u, v): f"{d['weight']:.{weight_decimals}f}" for u, v, d in G.edges(data=True)}
-    nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels, font_size=8, label_pos=0.55)
+    # Move edge labels further from nodes to reduce overlap
+    nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels, font_size=60, label_pos=0.8)
 
     plt.title(title)
     plt.axis("off")
