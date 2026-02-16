@@ -73,7 +73,7 @@ def load_edges_csv(edges_csv: str) -> pd.DataFrame:
     return df
 
 #Bayesian estimate of the probability that a child node occurs given its parent node, using a Beta prior
-#voids zero/one probabilities when counts are small
+#avoids zero/one probabilities when counts are small
 def bayes_edge_mean(k: int, n: int, alpha: float = 1.0, beta: float = 1.0) -> float:
     if n <= 0:
         return 0.0

@@ -3,12 +3,7 @@ import pandas as pd
 import os
 
 from sklearn.model_selection import StratifiedKFold
-from sklearn.metrics import (
-    accuracy_score,
-    f1_score,
-    precision_score,
-    recall_score,
-)
+from features.metrics import sklearn_metrics
 from sklearn.svm import SVC
 from imblearn.over_sampling import SMOTE
 from imblearn.pipeline import Pipeline as ImbPipeline
@@ -27,14 +22,10 @@ def _print_table(title: str, rows: list[dict], columns: list[str]) -> None:
 
 #This dictionary is used to build the results table and CSV output for each SVM fold and the mean.
 def _score_row(name: str, ytrue, pred) -> dict:
-    """Compute a standard set of metrics for one target."""
-    return {
-        "Model": name,
-        "Accuracy": f"{accuracy_score(ytrue, pred):.4f}",
-        "Precision": f"{precision_score(ytrue, pred, zero_division=0):.4f}",
-        "Recall": f"{recall_score(ytrue, pred, zero_division=0):.4f}",
-        "F1": f"{f1_score(ytrue, pred, zero_division=0):.4f}",
-    }
+    """Compute a standard set of metrics for one target using metrics.py wrapper."""
+    scores = sklearn_metrics(ytrue, pred)
+    scores["Model"] = name
+    return scores
 
 
 def run_svm_analysis(
@@ -44,6 +35,7 @@ def run_svm_analysis(
     n_splits: int = 5,
     seed: int = 7,
 ):
+    print(f"[DEBUG] run_svm_analysis called for targets: {ycols}")
     """Run per-label SVM-RBF with SMOTE and stratified k-fold CV.
 
     Parameters
