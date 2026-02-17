@@ -133,13 +133,24 @@ hfacs_categories:
 
 svm:
   data_file: 'step3_hfacs_categories.csv'   # relative to processed_dir
-  feature_columns:                           # Level-2 (preconditions)
+
+  # Features (Level 2 + Level 3 + Level 4 summaries)
+  feature_columns:
     - Condition_of_Operators
     - Personnel_Factors
     - Situational_Factors
-  target_columns:                            # Level-1 (unsafe acts)
+    - Inadequate_Supervision
+    - Failed_to_Correct_Problem
+    - Planned_Inappropriate_Operations
+    - Supervisory_Violation
+    - Organizational_Climate
+    - "Resource_Management/Organizational_Process"
+
+  # Targets (Level 1)
+  target_columns:
     - Error
     - Violation
+
   test_size: 0.15
   seed: 7
   degree_grid: [2, 3]

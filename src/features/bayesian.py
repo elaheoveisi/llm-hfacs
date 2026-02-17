@@ -93,18 +93,15 @@ def threshold_prune_edges(
     df_edges: pd.DataFrame,
     alpha: float = 1.0,
     beta: float = 1.0,
-    min_keep_score: float = 0,
+    min_keep_score: float = -5,
 ) -> pd.DataFrame:
     work = df_edges.copy()
     work["keep_score"] = work.apply(
         lambda r: edge_keep_score(int(r["N_joint"]), int(r["N_parent"]), alpha, beta),
         axis=1,
     )
-    while len(work) > 0:
-        idx_min = work["keep_score"].idxmin()
-        if float(work.loc[idx_min, "keep_score"]) >= min_keep_score:
-            break
-        work = work.drop(index=idx_min)
+    # Add a 'keep' column: True if keep_score >= min_keep_score, else False
+    work["keep"] = work["keep_score"] >= min_keep_score
     return work.sort_values(["parent", "child"]).reset_index(drop=True)
 
 
@@ -164,7 +161,7 @@ def draw_dag_pdf(
 
     edge_labels = {(u, v): f"{d['weight']:.{weight_decimals}f}" for u, v, d in G.edges(data=True)}
     # Move edge labels further from nodes to reduce overlap
-    nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels, font_size=60, label_pos=0.8)
+    nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels, font_size=60, label_pos=0.6)
 
     plt.title(title)
     plt.axis("off")

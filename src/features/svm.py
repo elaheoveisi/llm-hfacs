@@ -1,16 +1,19 @@
+from __future__ import annotations
+
+import os
+from typing import Dict, List
+
 import numpy as np
 import pandas as pd
-import os
+import yaml
 
 from sklearn.model_selection import StratifiedKFold
-from features.metrics import sklearn_metrics
 from sklearn.svm import SVC
+from sklearn.metrics import classification_report
 from imblearn.over_sampling import SMOTE
-from imblearn.pipeline import Pipeline as ImbPipeline
 
-#print table
-def _print_table(title: str, rows: list[dict], columns: list[str]) -> None:
-    """Pretty-print a list of row-dicts as a fixed-width table."""
+
+def _print_table(title: str, rows: List[Dict], columns: List[str]) -> None:
     col_widths = {c: max(len(c), *(len(str(r.get(c, ""))) for r in rows)) for c in columns}
     header = " | ".join(c.ljust(col_widths[c]) for c in columns)
     sep = "-+-".join("-" * col_widths[c] for c in columns)
@@ -20,82 +23,66 @@ def _print_table(title: str, rows: list[dict], columns: list[str]) -> None:
     for r in rows:
         print(" | ".join(str(r.get(c, "")).ljust(col_widths[c]) for c in columns))
 
-#This dictionary is used to build the results table and CSV output for each SVM fold and the mean.
-def _score_row(name: str, ytrue, pred) -> dict:
-    """Compute a standard set of metrics for one target using metrics.py wrapper."""
-    scores = sklearn_metrics(ytrue, pred)
-    scores["Model"] = name
-    return scores
-
 
 def run_svm_analysis(
     df: pd.DataFrame,
-    xcols: list[str],
-    ycols: list[str],
+    config_path: str = "./configs/config.yaml",
     n_splits: int = 5,
     seed: int = 7,
-):
-    print(f"[DEBUG] run_svm_analysis called for targets: {ycols}")
-    """Run per-label SVM-RBF with SMOTE and stratified k-fold CV.
+    out_csv: str = "data/processed/svm_results.csv",
+) -> None:
+    
+    with open(config_path, "r") as f:
+        cfg = yaml.safe_load(f)["svm"]
 
-    Parameters
-    ----------
-    df : pd.DataFrame
-        Row-level dataset with binary indicator columns.
-    xcols : list[str]
-        Feature column names (Level-2 HFACS categories).
-    ycols : list[str]
-        Target column names (Level-1 HFACS categories).
-    n_splits : int
-        Number of stratified k-fold splits.
-    seed : int
-        Random state for reproducibility.
-    """
+    xcols = cfg["feature_columns"]
+    ycols = cfg["target_columns"]  # ["Error","Violation"]
 
-    # ---------- PREPARE ----------
-    df = df.copy()
-    df[xcols] = df[xcols].astype(int)
-    df[ycols] = df[ycols].astype(int)
+    #missing_x = [c for c in xcols if c not in df.columns]
+    #missing_y = [c for c in ycols if c not in df.columns]
+    #if missing_x or missing_y:
+    # raise ValueError(f"Missing columns. X missing: {missing_x} | y missing: {missing_y}")
 
-    X = df[xcols].to_numpy()
-    Y = df[ycols]
+    X = df[xcols].astype(int).to_numpy()
 
-    table_cols = ["Model", "Accuracy", "Precision", "Recall", "F1"]
     skf = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=seed)
+    table_cols = ["Target", "Model", "Accuracy", "Precision", "Recall", "F1"]
+    rows: List[Dict] = []
 
-    results_dir = "data/processed"
     for target in ycols:
-        y = Y[target].to_numpy()
+        y = df[target].astype(int).to_numpy()
+        fold_rows: List[Dict] = []
 
-        fold_metrics: list[dict] = []
-        for fold, (train_idx, test_idx) in enumerate(skf.split(X, y), 1): #loop iterates over each fold produced by StratifiedKFold
-            Xtr, Xte = X[train_idx], X[test_idx]
-            ytr, yte = y[train_idx], y[test_idx]
 
-            # SMOTE on training fold only
-            smote = SMOTE(random_state=seed)
-            Xtr_res, ytr_res = smote.fit_resample(Xtr, ytr)
+        for fold, (tr, te) in enumerate(skf.split(X, y), 1):
+            Xtr, Xte = X[tr], X[te]
+            ytr, yte = y[tr], y[te]
 
-            svm = SVC(kernel="rbf", class_weight="balanced", random_state=seed)
-            svm.fit(Xtr_res, ytr_res)
-            pred = svm.predict(Xte)
+            Xtr, ytr = SMOTE(random_state=seed).fit_resample(Xtr, ytr)
 
-            fold_metrics.append(_score_row(f"Fold {fold}", yte, pred))
+            clf = SVC(kernel="rbf", class_weight="balanced", random_state=seed)
+            clf.fit(Xtr, ytr)
+            pred = clf.predict(Xte)
 
-        # compute mean across folds
-        metric_keys = ["Accuracy", "Precision", "Recall", "F1"]
-        mean_row = {"Model": "Mean"}
-        for k in metric_keys:
-            vals = [float(fm[k]) for fm in fold_metrics]
-            mean_row[k] = f"{np.mean(vals):.4f}"
+            rep = classification_report(yte, pred, output_dict=True, zero_division=0)
+            r = {
+                "Target": target,
+                "Model": f"Fold {fold}",
+                "Accuracy": rep["accuracy"],
+                "Precision": rep["1"]["precision"],
+                "Recall": rep["1"]["recall"],
+                "F1": rep["1"]["f1-score"],
+            }
+            fold_rows.append(r)
 
-        rows = fold_metrics + [mean_row]
-        _print_table(f"=== Target: {target} ===", rows, table_cols)
+        mean_row = {"Target": target, "Model": "Mean"}
+        for k in ["Accuracy", "Precision", "Recall", "F1"]:
+            mean_row[k] = f"{np.mean([float(fr[k]) for fr in fold_rows]):.4f}"
 
-        # Save results to CSV
-       
+        rows.extend(fold_rows + [mean_row])
 
-        os.makedirs(results_dir, exist_ok=True)
-        out_path = f"{results_dir}/svm_results_{target}.csv"
-        pd.DataFrame(rows).to_csv(out_path, index=False)
-        print(f"Results saved to {out_path}")
+    _print_table("=== SVM (config-driven features) ===", rows, table_cols)
+
+    os.makedirs(os.path.dirname(out_csv), exist_ok=True)
+    pd.DataFrame(rows).to_csv(out_csv, index=False)
+    print(f"Saved: {out_csv}")

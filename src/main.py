@@ -1,4 +1,3 @@
-
 import yaml
 import os
 from pathlib import Path
@@ -10,13 +9,8 @@ from features.hfacs_order_probability import (
     compute_combined_hfacs_matrix,
     compute_hfacs_ordered_probabilities,
 )
-from features.hfacs_dag import run_hfacs_dag, plot_hfacs_layered
 from utils import skip_run
-
-
-
-
-#
+from features.DAG import run_hfacs_causal_learn_ges
 
 
 def run_bayesian_dag(processed_dir):
@@ -141,26 +135,25 @@ with skip_run("run", "hfacs_combined_matrix") as check:
         print(combined_df)
 
 
-with skip_run("run", "hfacs_dag") as check:
+
+with skip_run("run", "hfacs_conditional_probabilities") as check:
     if check():
-        print("[INFO] Building HFACS DAG and exports...")
-        G, edge_df = run_hfacs_dag(df, config, output_dir=processed_dir)
-        # try to produce a layered PNG visualization (optional dependency: matplotlib)
-        try:
-            plot_hfacs_layered(G, save_path=str(Path(processed_dir) / "hfacs_dag.pdf"))
-        except Exception:
-            pass
-        print("[INFO] HFACS DAG exported to:")
-        print(f" - {processed_dir}/hfacs_dag.dot (if pydot installed)")
-        print(f" - {processed_dir}/hfacs_dag_edges.csv")
-        print(f" - {processed_dir}/hfacs_dag_adjacency_matrix.csv")
+        print("[INFO] Computing conditional probabilities for all HFACS categories...")
+        from features.conditional_prob import compute_all_hfacs_probabilities
+        compute_all_hfacs_probabilities(
+            df,
+            hfacs_map,
+            output_dir=processed_dir,
+        )
+        print(f"[INFO] Conditional probability tables saved to {processed_dir}")
+
+
 
 
 with skip_run("skip", "bayesian") as check:
     if check():
         print("[INFO] Running Bayesian HFACS processing...")
         run_bayesian_dag(processed_dir)
-
 
 
 
@@ -173,18 +166,13 @@ with skip_run("skip", "svm") as check:
         svm_data_path = Path(processed_dir) / svm_cfg.get("data_file", "step3_hfacs_categories.csv")
         svm_df = read_csv_robust(svm_data_path)
 
-        xcols = svm_cfg.get("feature_columns", ["Condition_of_Operators", "Personnel_Factors", "Situational_Factors"])
-        ycols = svm_cfg.get("target_columns", ["Error", "Violation"])
-
         run_svm_analysis(
             df=svm_df,
-            xcols=xcols,
-            ycols=ycols,
+            config_path="./configs/config.yaml",
             n_splits=svm_cfg.get("n_splits", 5),
             seed=svm_cfg.get("seed", 7),
+            out_csv="data/processed/svm_results.csv",
         )
         print("[INFO] SVM analysis complete.")
 
 
-# Also print HFACS category totals across the dataset (if available)
-#
