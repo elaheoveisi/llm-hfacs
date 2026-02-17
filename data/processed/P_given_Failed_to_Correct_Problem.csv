@@ -1,0 +1,2 @@
+HFACS_category,N_cases,P_Error,P_Violation,P_Situational_Factors,P_Personnel_Factors,P_Condition_of_Operators,P_Inadequate_Supervision,P_Planned_Inappropriate_Operations,P_Supervisory_Violation,P_Organizational_Climate,P_Resource_Management/Organizational_Process
+Failed_to_Correct_Problem,685,0.3285,0.8175,0.8686,0.6307,0.7942,0.292,0.2993,0.0993,0.8453,0.6526

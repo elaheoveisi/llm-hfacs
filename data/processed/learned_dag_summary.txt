@@ -1,0 +1,5 @@
+Nodes: 11
+Edges: 21
+Is DAG: True
+One topological order:
+Situational_Factors -> Condition_of_Operators -> Inadequate_Supervision -> Organizational_Climate -> Resource_Management/Organizational_Process -> Personnel_Factors -> Failed_to_Correct_Problem -> Error -> Planned_Inappropriate_Operations -> Supervisory_Violation -> Violation
