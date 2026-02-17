@@ -1,3 +1,4 @@
+
 import yaml
 import os
 from pathlib import Path
@@ -157,22 +158,9 @@ with skip_run("skip", "bayesian") as check:
 
 
 
+
 with skip_run("skip", "svm") as check:
     if check():
-        print("[INFO] Running SVM analysis...")
-        from features.old_svm import run_svm_analysis
-
-        svm_cfg = config.get("svm", {})
-        svm_data_path = Path(processed_dir) / svm_cfg.get("data_file", "step3_hfacs_categories.csv")
-        svm_df = read_csv_robust(svm_data_path)
-
-        run_svm_analysis(
-            df=svm_df,
-            config_path="./configs/config.yaml",
-            n_splits=svm_cfg.get("n_splits", 5),
-            seed=svm_cfg.get("seed", 7),
-            out_csv="data/processed/svm_results.csv",
-        )
-        print("[INFO] SVM analysis complete.")
+        run_svm_script()
 
 
