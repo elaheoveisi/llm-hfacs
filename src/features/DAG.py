@@ -38,7 +38,7 @@ def _blacklist_sinks(nodes: list[str], sink_nodes: tuple[str, ...]) -> list[tupl
 
 
 
-def _check_binary_01(df: pd.DataFrame, cols: list[str]) -> None:
+#def _check_binary_01(df: pd.DataFrame, cols: list[str]) -> None:
     for col in cols:
         vals = set(pd.unique(df[col].dropna()))
         if not vals.issubset({0, 1}):

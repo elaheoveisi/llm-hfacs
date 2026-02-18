@@ -213,8 +213,8 @@ def run_svm_joint_multioutput(
 def main():
     import argparse
     parser = argparse.ArgumentParser(description="Run SVM joint multioutput analysis.")
-    parser.add_argument("--config", type=str, default="../../configs/config.yaml", help="Path to config.yaml")
-    parser.add_argument("--data", type=str, default="../../data/processed/step3_hfacs_categories.csv", help="Path to input CSV data file")
+    parser.add_argument("--config", type=str, default="configs/config.yaml", help="Path to config.yaml")
+    parser.add_argument("--data", type=str, default="data/processed/step3_hfacs_categories.csv", help="Path to input CSV data file")
     parser.add_argument("--splits", type=int, default=5, help="Number of CV splits")
     parser.add_argument("--seed", type=int, default=7, help="Random seed")
     parser.add_argument("--out", type=str, default="../../data/processed/svm_joint_results.csv", help="Output CSV file")

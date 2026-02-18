@@ -159,8 +159,10 @@ with skip_run("skip", "bayesian") as check:
 
 
 
+
 with skip_run("skip", "svm") as check:
     if check():
-        run_svm_script()
+        from features import svm
+        svm.main()
 
 
