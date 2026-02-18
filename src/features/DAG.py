@@ -38,13 +38,8 @@ def _blacklist_sinks(nodes: list[str], sink_nodes: tuple[str, ...]) -> list[tupl
 
 
 
-#def _check_binary_01(df: pd.DataFrame, cols: list[str]) -> None:
-    for col in cols:
-        vals = set(pd.unique(df[col].dropna()))
-        if not vals.issubset({0, 1}):
-            raise ValueError(f"Column {col} is not binary 0/1. Found: {sorted(vals)[:10]}")
 
-
+#It takes a table that shows how things are connected and turns it into two lists: one list of arrows (A → B) and one list of simple lines (A — B), depending on the numbers in the table.
 def _matrix_to_edges(categories: list[str], M) -> tuple[list[tuple[str, str]], list[tuple[str, str]]]:
     directed: list[tuple[str, str]] = []
     undirected: list[tuple[str, str]] = []
@@ -111,7 +106,6 @@ def learn_dag_ges(
       - G: nx.DiGraph (a single DAG we build from the learned CPDAG)
       - record: dict from causal-learn (includes score, graph, etc.)
     """
-    _check_binary_01(df, categories)
 
     X = df[categories].astype(int).to_numpy()
 
