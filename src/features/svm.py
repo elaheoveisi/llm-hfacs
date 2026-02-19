@@ -1,36 +1,21 @@
 from __future__ import annotations
-
 import os
-
-from typing import Dict, List, Tuple
- 
+from typing import Dict, List, Tuple 
 import numpy as np
-
 import pandas as pd
-
 import yaml
- 
 from sklearn.model_selection import StratifiedKFold
-
 from sklearn.svm import SVC
-
 from sklearn.metrics import classification_report, accuracy_score
-
 from imblearn.over_sampling import SMOTE
  
  
 def _print_table(title: str, rows: List[Dict], columns: List[str]) -> None:
-
     col_widths = {c: max(len(c), *(len(str(r.get(c, ""))) for r in rows)) for c in columns}
-
     header = " | ".join(c.ljust(col_widths[c]) for c in columns)
-
     sep = "-+-".join("-" * col_widths[c] for c in columns)
-
     print(f"\n{title}")
-
     print(header)
-
     print(sep)
 
     for r in rows:
@@ -52,38 +37,23 @@ def _encode_joint_labels(y_error: np.ndarray, y_violation: np.ndarray) -> np.nda
 
     y_violation = y_violation.astype(int)
 
-    return (y_error * 2 + y_violation).astype(int)
+    return (y_error * 2 + y_violation).astype(int)  #combine two binary labels into one number
  
  
 def _decode_joint_labels(y_joint: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
 
-    """
-
-    Decode 0..3 back to (Error, Violation)
-
-    """
-
     y_joint = y_joint.astype(int)
-
     y_error = (y_joint // 2).astype(int)
-
     y_violation = (y_joint % 2).astype(int)
-
     return y_error, y_violation
  
  
 def run_svm_joint_multioutput(
-
     df: pd.DataFrame,
-
     config_path: str = "./configs/config.yaml",
-
     n_splits: int = 5,
-
     seed: int = 7,
-
     out_csv: str = "data/processed/svm_joint_results.csv",
-
 ) -> None:
 
     """
@@ -103,29 +73,18 @@ def run_svm_joint_multioutput(
     """
 
     with open(config_path, "r") as f:
-
         cfg = yaml.safe_load(f)["svm"]
- 
     xcols = cfg["feature_columns"]
-
     ycols = cfg["target_columns"]  # expected ["Error", "Violation"] (order matters)
  
     if len(ycols) != 2:
-
         raise ValueError(f"This joint SVM expects exactly 2 target columns, got: {ycols}")
- 
-    err_col, vio_col = ycols[0], ycols[1]
- 
+    err_col, vio_col = ycols[0], ycols[1] 
     X = df[xcols].astype(int).to_numpy()
-
     y_error = df[err_col].astype(int).to_numpy()
-
     y_violation = df[vio_col].astype(int).to_numpy()
-
-    y_joint = _encode_joint_labels(y_error, y_violation)
- 
-    skf = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=seed)
- 
+    y_joint = _encode_joint_labels(y_error, y_violation) 
+    skf = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=seed) 
     table_cols = [
 
         "Model",
