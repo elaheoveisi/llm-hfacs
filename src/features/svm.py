@@ -7,7 +7,7 @@ import yaml
 from sklearn.model_selection import StratifiedKFold
 from sklearn.svm import SVC
 from sklearn.metrics import classification_report, accuracy_score
-from imblearn.over_sampling import SMOTE
+
  
  
 def _print_table(title: str, rows: List[Dict], columns: List[str]) -> None:
@@ -38,6 +38,7 @@ def _encode_joint_labels(y_error: np.ndarray, y_violation: np.ndarray) -> np.nda
     y_violation = y_violation.astype(int)
 
     return (y_error * 2 + y_violation).astype(int)  #combine two binary labels into one number
+#take two separate yes/no labels and turn them into one single label with 4 possible values.
  
  
 def _decode_joint_labels(y_joint: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
@@ -107,9 +108,7 @@ def run_svm_joint_multioutput(
 
         ytr_joint, yte_joint = y_joint[tr], y_joint[te]
  
-        # Handle imbalance at the JOINT-class level (0..3)
-
-        Xtr, ytr_joint = SMOTE(random_state=seed).fit_resample(Xtr, ytr_joint)
+        # ...existing code...
  
         clf = SVC(kernel="rbf", class_weight="balanced", random_state=seed)
 

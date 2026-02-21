@@ -200,26 +200,18 @@ def plot_dag(
     node_labels = list(G.nodes)
     node_colors = get_node_colors(node_labels)
 
-    edge_weights = [G[u][v].get('weight', 1.0) for u, v in G.edges] if G.edges else []
-    if edge_weights:
-        min_w, max_w = min(edge_weights), max(edge_weights)
-        edge_widths = [3 for _ in edge_weights] if min_w == max_w else [1 + 7 * (w - min_w) / (max_w - min_w) for w in edge_weights]
-    else:
-        edge_widths = []
-
-    # Draw straight arrows only (no curve)
-    for (u, v), w in zip(G.edges, edge_widths):
-        nx.draw_networkx_edges(
-            G, pos,
-            edgelist=[(u, v)],
-            width=w,
-            edge_color='dimgray',
-            arrows=True,
-            arrowstyle='-|>',
-            ax=plt.gca(),
-            min_source_margin=15,
-            min_target_margin=15
-        )
+    # Draw all edges with the same thickness
+    nx.draw_networkx_edges(
+        G,
+        pos,
+        ax=plt.gca(),
+        width=2.0,  # constant thickness for all edges
+        edge_color="dimgray",
+        arrows=True,
+        arrowstyle="-|>",
+        min_source_margin=15,
+        min_target_margin=15,
+    )
 
     nx.draw_networkx_nodes(G, pos, node_color=node_colors, node_size=1200, ax=plt.gca())
 
