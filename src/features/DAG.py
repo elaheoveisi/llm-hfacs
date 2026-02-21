@@ -1,14 +1,30 @@
 from __future__ import annotations
-
 import yaml
 import pandas as pd
 from pathlib import Path
-
 import networkx as nx
 import matplotlib.pyplot as plt
-
-# causal-learn (GES)
 from causallearn.search.ScoreBased.GES import ges
+
+# Prettify label for node and legend display
+def prettify_label(label: str) -> str:
+    # Custom mapping for category names (edit as needed)
+    custom_mapping = {
+        "Error": "Error (Unsafe Act)",
+        "Violation": "Violation (Unsafe Act)",
+        "Situational_Factors": "Situational Factors",
+        "Personnel_Factors": "Personnel Factors",
+        "Condition_of_Operators": "Condition of Operators",
+        "Inadequate_Supervision": "Inadequate Supervision",
+        "Failed_to_Correct_Problem": "Failed to Correct Problem",
+        "Planned_Inappropriate_Operations": "Planned Inappropriate Operations",
+        "Supervisory_Violation": "Supervisory Violation",
+        "Organizational_Climate": "Organizational Climate",
+        "Resource_Management/Organizational_Process": "Resource Management / Organizational Process",
+    }
+    if label in custom_mapping:
+        return custom_mapping[label]
+    # Fallback: Title Case, replace _ and /
 
 
 
@@ -186,10 +202,10 @@ def plot_dag(
         ]
         colors = []
         for i, label in enumerate(labels):
-            l = label.lower()
-            if l == "error":
+            label_lower = label.lower()
+            if label_lower == "error":
                 colors.append("#003366")
-            elif l == "violation":
+            elif label_lower == "violation":
                 colors.append("black")
             else:
                 colors.append(palette[i % len(palette)])
@@ -197,7 +213,7 @@ def plot_dag(
 
     pos = nx.circular_layout(G)
     plt.figure(figsize=(12, 8))
-    node_labels = list(G.nodes)
+    node_labels = [prettify_label(n) for n in G.nodes]
     node_colors = get_node_colors(node_labels)
 
     # Draw all edges with the same thickness
@@ -216,7 +232,7 @@ def plot_dag(
     nx.draw_networkx_nodes(G, pos, node_color=node_colors, node_size=1200, ax=plt.gca())
 
     import matplotlib.patches as mpatches
-    legend_handles = [mpatches.Circle((0,0), radius=8, color=c, label=l) for c, l in zip(node_colors, node_labels)]
+    legend_handles = [mpatches.Circle((0,0), radius=8, color=c, label=label) for c, label in zip(node_colors, node_labels)]
     plt.legend(
         handles=legend_handles,
         labels=node_labels,
