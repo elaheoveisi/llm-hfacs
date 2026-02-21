@@ -211,6 +211,7 @@ def plot_dag(
                 colors.append(palette[i % len(palette)])
         return colors
 
+
     pos = nx.circular_layout(G)
     plt.figure(figsize=(12, 8))
     node_labels = [prettify_label(n) for n in G.nodes]
@@ -225,33 +226,30 @@ def plot_dag(
         edge_color="dimgray",
         arrows=True,
         arrowstyle="-|>",
+        arrowsize=60,  # make arrowheads even larger and more obvious
         min_source_margin=15,
         min_target_margin=15,
     )
 
-    nx.draw_networkx_nodes(G, pos, node_color=node_colors, node_size=1200, ax=plt.gca())
 
-    import matplotlib.patches as mpatches
-    legend_handles = [mpatches.Circle((0,0), radius=8, color=c, label=label) for c, label in zip(node_colors, node_labels)]
-    plt.legend(
-        handles=legend_handles,
-        labels=node_labels,
-        loc='center left',
-        bbox_to_anchor=(1.02, 0.5),
-        ncol=1,
-        frameon=False,
-        handletextpad=0.8,
-        columnspacing=1.5,
-        fontsize=12,
-        borderaxespad=0.0
-    )
-    plt.subplots_adjust(right=0.78)
+    # Draw only rectangles with category names (no networkx node shapes)
+    for node, (x, y) in pos.items():
+        label = prettify_label(node)
+        idx = list(G.nodes).index(node)
+        plt.text(x, y, label, fontsize=16, ha='center', va='center',
+                 bbox=dict(boxstyle='round,pad=0.4', fc=node_colors[idx], ec='black', lw=2))
+
     plt.title(title)
-    plt.subplots_adjust(bottom=0.25)
+    plt.axis('off')
+    plt.tight_layout()
 
     if save_path:
-        Path(save_path).parent.mkdir(parents=True, exist_ok=True)
-        plt.savefig(save_path, bbox_inches="tight")
+        out_path = Path(save_path)
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        # Save as PDF
+        plt.savefig(str(out_path.with_suffix('.pdf')), bbox_inches="tight")
+        # Save as PNG
+        plt.savefig(str(out_path.with_suffix('.png')), bbox_inches="tight")
         plt.close()
     else:
         plt.show()
@@ -293,7 +291,12 @@ def run_hfacs_causal_learn_ges(
 
     # record often includes a score; keep print safe
     score = record.get("score", None)
+    score_path = Path(output_dir) / "learned_dag_score.txt"
     if score is not None:
         print(f"[INFO] GES complete. Score={score}. Outputs in {output_dir}")
+        with open(score_path, "w", encoding="utf-8") as f:
+            f.write(f"GES Score: {score}\n")
     else:
         print(f"[INFO] GES complete. Outputs in {output_dir}")
+        with open(score_path, "w", encoding="utf-8") as f:
+            f.write("GES Score: N/A\n")
