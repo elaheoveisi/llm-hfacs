@@ -1,4 +1,3 @@
-
 import yaml
 import os
 from pathlib import Path
@@ -140,15 +139,14 @@ with skip_run("run", "hfacs_combined_matrix") as check:
 with skip_run("run", "hfacs_conditional_probabilities") as check:
     if check():
         print("[INFO] Computing conditional probabilities for all HFACS categories...")
-        from features.conditional_prob import compute_all_hfacs_probabilities
-        compute_all_hfacs_probabilities(
+        from features.conditional_prob import compute_all_hfacs_probabilities, save_all_conditional_probabilities_to_csv
+        results = compute_all_hfacs_probabilities(
             df,
             hfacs_map,
             output_dir=processed_dir,
         )
-        print(f"[INFO] Conditional probability tables saved to {processed_dir}")
-
-
+        save_all_conditional_probabilities_to_csv(results, output_path=f"{processed_dir}/all_conditional_probabilities.csv")
+        print(f"[INFO] Conditional probability tables saved to {processed_dir} and all_conditional_probabilities.csv")
 
 
 with skip_run("skip", "bayesian") as check:

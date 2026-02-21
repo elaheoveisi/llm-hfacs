@@ -74,3 +74,14 @@ def compute_all_hfacs_probabilities(
         results[parent] = prob_df
 
     return results
+
+
+def save_all_conditional_probabilities_to_csv(
+    results: dict, output_path: str = "./data/processed/all_conditional_probabilities.csv"
+):
+    """
+    Combine all conditional probability DataFrames into one CSV file.
+    Each row will include the parent category as a column.
+    """
+    combined = pd.concat(results.values(), ignore_index=True)
+    combined.to_csv(output_path, index=False)
