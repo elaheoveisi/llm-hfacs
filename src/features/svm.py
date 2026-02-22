@@ -131,33 +131,20 @@ def run_svm_joint_multioutput(
         rep_vio = classification_report(yte_vio, pr_vio, output_dict=True, zero_division=0)
  
         r = {
-
             "Model": f"Fold {fold}",
-
-            "JointAcc": float(joint_acc),
- 
-            f"{err_col}_Prec1": float(rep_err["1"]["precision"]),
-
-            f"{err_col}_Rec1": float(rep_err["1"]["recall"]),
-
-            f"{err_col}_F1_1": float(rep_err["1"]["f1-score"]),
- 
-            f"{vio_col}_Prec1": float(rep_vio["1"]["precision"]),
-
-            f"{vio_col}_Rec1": float(rep_vio["1"]["recall"]),
-
-            f"{vio_col}_F1_1": float(rep_vio["1"]["f1-score"]),
-
+            "JointAcc": f"{joint_acc:.4f}",
+            f"{err_col}_Prec1": f"{rep_err['1']['precision']:.4f}",
+            f"{err_col}_Rec1": f"{rep_err['1']['recall']:.4f}",
+            f"{err_col}_F1_1": f"{rep_err['1']['f1-score']:.4f}",
+            f"{vio_col}_Prec1": f"{rep_vio['1']['precision']:.4f}",
+            f"{vio_col}_Rec1": f"{rep_vio['1']['recall']:.4f}",
+            f"{vio_col}_F1_1": f"{rep_vio['1']['f1-score']:.4f}",
         }
-
         fold_rows.append(r)
- 
+
     mean_row: Dict = {"Model": "Mean"}
-
     for k in table_cols[1:]:
-
         mean_row[k] = f"{np.mean([float(fr[k]) for fr in fold_rows]):.4f}"
- 
     rows.extend(fold_rows + [mean_row])
  
     _print_table("=== ONE SVM predicting (Error,Violation) jointly (4-class) ===", rows, table_cols)
