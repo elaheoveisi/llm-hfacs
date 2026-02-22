@@ -1,3 +1,19 @@
+# Function to balance joint categories by downsampling to the lowest count
+def balance_joint_categories(df, error_col="Error", violation_col="Violation", random_state=42):
+    """
+    Downsample all (Error, Violation) joint categories to the size of the smallest group.
+    Returns a balanced DataFrame.
+    """
+    joint_label = df[error_col].astype(int) * 2 + df[violation_col].astype(int)
+    min_count = joint_label.value_counts().min()
+    balanced_df = (
+        df.assign(_joint=joint_label)
+        .groupby("_joint", group_keys=False)
+        .apply(lambda x: x.sample(n=min_count, random_state=random_state))
+        .drop(columns=["_joint"])
+        .reset_index(drop=True)
+    )
+    return balanced_df
 
 
 import yaml
@@ -290,7 +306,24 @@ with skip_run("skip", "bayesian") as check:
 with skip_run("skip", "svm") as check:
     if check():
         from features import svm
-        svm.main()
+        # Balance the data before running SVM
+        if "Error" in df.columns and "Violation" in df.columns:
+            print("[INFO] Balancing joint categories before SVM...")
+            df_balanced = balance_joint_categories(df, error_col="Error", violation_col="Violation")
+            print("[INFO] New counts after balancing:")
+            joint_label_bal = df_balanced["Error"].astype(int) * 2 + df_balanced["Violation"].astype(int)
+            for idx, count in joint_label_bal.value_counts().sort_index().items():
+                print(f"  Category {idx} (Error={idx//2}, Violation={idx%2}): {count}")
+            # Call SVM directly with balanced DataFrame
+            svm.run_svm_joint_multioutput(
+                df=df_balanced,
+                config_path="configs/config.yaml",
+                n_splits=5,
+                seed=7,
+                out_csv="data/processed/svm_joint_results.csv"
+            )
+        else:
+            svm.main()
 
 
 with skip_run("run", "dag") as check:
