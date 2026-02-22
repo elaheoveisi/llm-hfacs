@@ -80,26 +80,26 @@ def run_svm_joint_multioutput(
  
     if len(ycols) != 2:
         raise ValueError(f"This joint SVM expects exactly 2 target columns, got: {ycols}")
-    err_col, vio_col = ycols[0], ycols[1] 
+    err_col, vio_col = ycols[0], ycols[1]
+
+    # Count and print the number in each category for both target columns
+    print(f"Counts for {err_col}:")
+    print(df[err_col].value_counts())
+    print(f"\nCounts for {vio_col}:")
+    print(df[vio_col].value_counts())
+
     X = df[xcols].astype(int).to_numpy()
     y_error = df[err_col].astype(int).to_numpy()
     y_violation = df[vio_col].astype(int).to_numpy()
-    y_joint = _encode_joint_labels(y_error, y_violation) 
-    skf = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=seed) 
+    y_joint = _encode_joint_labels(y_error, y_violation)
+    skf = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=seed)
     table_cols = [
-
         "Model",
-
         "JointAcc",
-
         f"{err_col}_Prec1", f"{err_col}_Rec1", f"{err_col}_F1_1",
-
         f"{vio_col}_Prec1", f"{vio_col}_Rec1", f"{vio_col}_F1_1",
-
     ]
-
     rows: List[Dict] = []
-
     fold_rows: List[Dict] = []
  
     for fold, (tr, te) in enumerate(skf.split(X, y_joint), 1):
