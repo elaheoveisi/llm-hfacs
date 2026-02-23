@@ -143,6 +143,26 @@ def export_dag_outputs(G: nx.DiGraph, output_dir: str) -> None:
     edges = pd.DataFrame(list(G.edges()), columns=["parent", "child"])
     edges.to_csv(outdir / "learned_dag_edges.csv", index=False)
 
+    # Compute and save raw conditional probabilities for each edge
+    # Try to find the data file in the output directory or use a default
+    data_path = outdir / "../step3_hfacs_categories.csv"
+    if not data_path.exists():
+        data_path = Path("./data/processed/step3_hfacs_categories.csv")
+    if data_path.exists():
+        df = pd.read_csv(data_path)
+        condprobs = []
+        for parent, child in G.edges():
+            # P(child=1 | parent=1)
+            parent_1 = df[df[parent] == 1]
+            if len(parent_1) > 0:
+                p = parent_1[child].mean()
+            else:
+                p = float('nan')
+            condprobs.append({"parent": parent, "child": child, "P(child=1|parent=1)": p})
+        pd.DataFrame(condprobs).to_csv(outdir / "learned_dag_conditional_probabilities.csv", index=False)
+    else:
+        print(f"[WARN] Could not find data file for conditional probabilities: {data_path}")
+
     # Adjacency
     nodes = list(G.nodes())
     A = nx.to_pandas_adjacency(G, nodelist=nodes, weight=None)

@@ -1,4 +1,21 @@
-# Function to balance joint categories by downsampling to the lowest count
+import pandas as pd
+import yaml
+import os
+from pathlib import Path
+import csv
+from features.hfacs_order_probability import (
+    HFACS_ORDER,
+    compute_all_full_hfacs_chains,
+    compute_combined_hfacs_matrix,
+    compute_hfacs_ordered_probabilities,
+)
+from utils import skip_run
+from features.DAG import run_hfacs_causal_learn_ges
+
+
+
+
+
 def balance_joint_categories(df, error_col="Error", violation_col="Violation", random_state=42):
     """
     Downsample all (Error, Violation) joint categories to the size of the smallest group.
@@ -16,19 +33,6 @@ def balance_joint_categories(df, error_col="Error", violation_col="Violation", r
     return balanced_df
 
 
-import yaml
-import os
-from pathlib import Path
-import csv
-import pandas as pd
-from features.hfacs_order_probability import (
-    HFACS_ORDER,
-    compute_all_full_hfacs_chains,
-    compute_combined_hfacs_matrix,
-    compute_hfacs_ordered_probabilities,
-)
-from utils import skip_run
-from features.DAG import run_hfacs_causal_learn_ges
 
 
 # Function to run Bayesian DAG processing
@@ -324,6 +328,7 @@ with skip_run("skip", "svm") as check:
             )
         else:
             svm.main()
+
 
 
 with skip_run("run", "dag") as check:

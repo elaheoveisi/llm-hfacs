@@ -57,21 +57,7 @@ def run_svm_joint_multioutput(
     out_csv: str = "data/processed/svm_joint_results.csv",
 ) -> None:
 
-    """
 
-    Train ONE SVM model to predict BOTH outputs together by turning (Error, Violation)
-
-    into a single 4-class target, then decoding predictions back to two outputs.
- 
-    Outputs:
-
-      - Joint accuracy (exact match of both outputs)
-
-      - Per-output precision/recall/F1 for the positive class (1)
-
-      - Also saves fold + mean rows to CSV
-
-    """
 
     with open(config_path, "r") as f:
         cfg = yaml.safe_load(f)["svm"]
@@ -88,9 +74,21 @@ def run_svm_joint_multioutput(
     print(f"\nCounts for {vio_col}:")
     print(df[vio_col].value_counts())
 
-    X = df[xcols].astype(int).to_numpy()
-    y_error = df[err_col].astype(int).to_numpy()
-    y_violation = df[vio_col].astype(int).to_numpy()
+    # Balance the joint categories (0,1,2,3) to have the same number of samples
+    joint_label = df[err_col].astype(int) * 2 + df[vio_col].astype(int)
+    min_count = joint_label.value_counts().min()
+    balanced_df = (
+        df.assign(_joint=joint_label)
+        .groupby("_joint", group_keys=False)
+        .apply(lambda x: x.sample(n=min_count, random_state=seed))
+        .drop(columns=["_joint"])
+        .reset_index(drop=True)
+    )
+    print("[INFO] Joint category counts after balancing:")
+    print(balanced_df[[err_col, vio_col]].astype(int).apply(lambda x: x[err_col]*2 + x[vio_col], axis=1).value_counts().sort_index())
+    X = balanced_df[xcols].astype(int).to_numpy()
+    y_error = balanced_df[err_col].astype(int).to_numpy()
+    y_violation = balanced_df[vio_col].astype(int).to_numpy()
     y_joint = _encode_joint_labels(y_error, y_violation)
     skf = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=seed)
     table_cols = [
@@ -108,7 +106,6 @@ def run_svm_joint_multioutput(
 
         ytr_joint, yte_joint = y_joint[tr], y_joint[te]
  
-        # ...existing code...
  
         clf = SVC(kernel="rbf", class_weight="balanced", random_state=seed)
 
@@ -155,23 +152,3 @@ def run_svm_joint_multioutput(
 
     print(f"Saved: {out_csv}")
     
-def main():
-    import argparse
-    parser = argparse.ArgumentParser(description="Run SVM joint multioutput analysis.")
-    parser.add_argument("--config", type=str, default="configs/config.yaml", help="Path to config.yaml")
-    parser.add_argument("--data", type=str, default="data/processed/step3_hfacs_categories.csv", help="Path to input CSV data file")
-    parser.add_argument("--splits", type=int, default=5, help="Number of CV splits")
-    parser.add_argument("--seed", type=int, default=7, help="Random seed")
-    parser.add_argument("--out", type=str, default="../../data/processed/svm_joint_results.csv", help="Output CSV file")
-    args = parser.parse_args()
-    df = pd.read_csv(args.data)
-    run_svm_joint_multioutput(
-        df=df,
-        config_path=args.config,
-        n_splits=args.splits,
-        seed=args.seed,
-        out_csv=args.out,
-    )
-
-if __name__ == "__main__":
-    main()
