@@ -56,6 +56,18 @@ def plot_dag(
 	node_labels = [prettify_label(n) for n in G.nodes]
 	node_colors = get_node_colors(node_labels)
 
+
+	# Try to load conditional probabilities for edge labels
+	import os
+	condprob_path = os.path.join(os.path.dirname(save_path) if save_path else '.', "learned_dag_conditional_probabilities.csv")
+	condprobs = None
+	if os.path.exists(condprob_path):
+		import pandas as pd
+		condprobs = pd.read_csv(condprob_path)
+		condprob_dict = {(row['parent'], row['child']): row['P(child=1|parent=1)'] for _, row in condprobs.iterrows()}
+	else:
+		condprob_dict = {}
+
 	# Draw all edges with the same thickness
 	nx.draw_networkx_edges(
 		G,
@@ -69,6 +81,22 @@ def plot_dag(
 		min_source_margin=15,
 		min_target_margin=15,
 	)
+
+	# Draw edge labels for conditional probabilities if available
+	if condprobs is not None:
+		edge_labels = {}
+		for u, v in G.edges():
+			p = condprob_dict.get((u, v), None)
+			if p is not None and not pd.isna(p):
+				edge_labels[(u, v)] = f"{p:.2f}"
+		nx.draw_networkx_edge_labels(
+			G,
+			pos,
+			edge_labels=edge_labels,
+			font_color='blue',
+			font_size=14,
+			label_pos=0.7  # Move labels further from nodes
+		)
 
 	# Draw only rectangles with category names (no networkx node shapes)
 	for node, (x, y) in pos.items():
