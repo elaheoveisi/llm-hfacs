@@ -151,8 +151,7 @@ svm:
     - Error
     - Violation
 
-  test_size: 0.15
+  test_size: 0.2
   seed: 7
   degree_grid: [2, 3]
   c_grid: [0.01, 0.1, 1, 10, 100]
-
