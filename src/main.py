@@ -1,3 +1,7 @@
+# --- Add code to save SVM results table ---
+import numpy as np
+import pandas as pd
+from sklearn.metrics import classification_report, confusion_matrix
 import pandas as pd
 import yaml
 import os
@@ -13,6 +17,19 @@ from utils import skip_run
 from features.DAG import run_hfacs_causal_learn_ges
 
 
+
+def save_svm_results(y_test, y_pred, out_dir="./svm_outputs"):
+    os.makedirs(out_dir, exist_ok=True)
+    # Save confusion matrix
+    cm = confusion_matrix(y_test, y_pred)
+    cm_df = pd.DataFrame(cm, columns=["Pred_Neither", "Pred_Error", "Pred_Violation"],
+                        index=["True_Neither", "True_Error", "True_Violation"])
+    cm_df.to_csv(os.path.join(out_dir, "svm_confusion_matrix.csv"))
+
+    # Save classification report
+    report = classification_report(y_test, y_pred, digits=4, output_dict=True)
+    report_df = pd.DataFrame(report).transpose()
+    report_df.to_csv(os.path.join(out_dir, "svm_classification_report.csv"))
 
 
 
@@ -307,31 +324,20 @@ with skip_run("skip", "bayesian") as check:
 
 
 
-with skip_run("skip", "svm") as check:
+with skip_run("run", "svm") as check:
     if check():
         from features import svm
-        # Balance the data before running SVM
-        if "Error" in df.columns and "Violation" in df.columns:
-            print("[INFO] Balancing joint categories before SVM...")
-            df_balanced = balance_joint_categories(df, error_col="Error", violation_col="Violation")
-            print("[INFO] New counts after balancing:")
-            joint_label_bal = df_balanced["Error"].astype(int) * 2 + df_balanced["Violation"].astype(int)
-            for idx, count in joint_label_bal.value_counts().sort_index().items():
-                print(f"  Category {idx} (Error={idx//2}, Violation={idx%2}): {count}")
-            # Call SVM directly with balanced DataFrame
-            svm.run_svm_joint_multioutput(
-                df=df_balanced,
-                config_path="configs/config.yaml",
-                n_splits=5,
-                seed=7,
-                out_csv="data/processed/svm_joint_results.csv"
-            )
+        print("[INFO] Running SVM prediction...")
+        svm.main()
+        # Try to save SVM results if y_test and y_pred are available from svm module
+        if hasattr(svm, "y_test") and hasattr(svm, "y_pred"):
+            save_svm_results(svm.y_test, svm.y_pred)
         else:
-            svm.main()
+            print("[WARN] y_test and y_pred not found in svm module; results not saved.")
+       
 
 
-
-with skip_run("run", "dag") as check:
+with skip_run("skip", "dag") as check:
     if check():
         print("[INFO] Running DAG discovery with causal-learn...")
         run_hfacs_causal_learn_ges(

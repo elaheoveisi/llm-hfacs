@@ -10,13 +10,17 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
 from sklearn.svm import SVC
 from sklearn.metrics import classification_report, confusion_matrix, accuracy_score
-  
+ 
+ 
+ 
 # --- Load config from YAML ---
 import yaml
 with open(os.path.join(os.path.dirname(__file__), '../../configs/config.yaml'), 'r', encoding='utf-8') as f:
     config_yaml = yaml.safe_load(f)
  
-hfacs_categories = config_yaml['hfacs_categories'] 
+# Mapping from category to subcategory columns (from config)
+hfacs_categories = config_yaml['hfacs_categories']
+ 
 svm_cfg = config_yaml['svm']
  
 class Config:
@@ -27,7 +31,7 @@ class Config:
     target_columns: List[str] = svm_cfg['target_columns']
     error_target_col: str = 'Error'
     viol_target_col: str = 'Violation'
-    test_size: float = 0.20  
+    test_size: float = 0.20  # Set test size to 20%
     seed: int = svm_cfg.get('seed', 7)
     degree_grid: Tuple[int, ...] = tuple(svm_cfg.get('degree_grid', [2, 3]))
     c_grid: Tuple[float, ...] = tuple(svm_cfg.get('c_grid', [0.01, 0.1, 1, 10, 100]))
@@ -35,9 +39,41 @@ class Config:
  
 CFG = Config()
  
-# Weights 
-error_weights: Dict[str, float] = config_yaml.get('error_weights', {})
-viol_weights: Dict[str, float] = config_yaml.get('viol_weights', {})
+#Weights
+error_weights: Dict[str, float] = {
+    "Anomaly_Conflict NMAC": 5.0,
+    "Anomaly_Inflight Event / Encounter Loss Of Aircraft Control": 4.0,
+    "Anomaly_Ground Event / Encounter Loss Of Aircraft Control": 4.0,
+    "Anomaly_Inflight Event / Encounter CFTT / CFIT": 4.0,
+    "Anomaly_Conflict Ground Conflict, Critical": 3.0,
+    "Anomaly_Inflight Event / Encounter VFR In IMC": 3.0,
+    "Anomaly_Inflight Event / Encounter Unstabilized Approach": 3.0,
+    "Anomaly_Inflight Event / Encounter Fuel Issue": 3.0,
+    "Anomaly_Ground Event / Encounter Fuel Issue": 3.0,
+    "Anomaly_Conflict Airborne Conflict": 2.0,
+    "Anomaly_Conflict Ground Conflict, Less Severe": 2.0,
+    "Anomaly_Ground Event / Encounter Gear Up Landing": 2.0,
+    "Anomaly_Deviation - Altitude Excursion From Assigned Altitude": 1.5,
+    "Anomaly_Deviation - Altitude Overshoot": 1.5,
+    "Anomaly_Deviation - Altitude Undershoot": 1.5,
+    "Anomaly_Deviation - Speed All Types": 1.5,
+    "Anomaly_Deviation - Track / Heading All Types": 1.5,
+    "Anomaly_Inflight Event / Encounter Fly Away (UAS)": 2.0,
+}
+viol_weights: Dict[str, float] = {
+    "Anomaly_Airspace Violation All Types": 4.0,
+    "Anomaly_Deviation / Discrepancy - Procedural FAR": 4.0,
+    "Anomaly_Deviation / Discrepancy - Procedural Landing Without Clearance": 4.0,
+    "Anomaly_Deviation / Discrepancy - Procedural Unauthorized Flight Operations (UAS)": 4.0,
+    "Anomaly_Deviation / Discrepancy - Procedural Hazardous Material Violation": 3.5,
+    "Anomaly_Deviation / Discrepancy - Procedural Weight And Balance": 3.5,
+    "Anomaly_Deviation / Discrepancy - Procedural Clearance": 3.0,
+    "Anomaly_Deviation / Discrepancy - Procedural Published Material / Policy": 3.0,
+    "Anomaly_Deviation / Discrepancy - Procedural MEL / CDL": 3.0,
+    "Anomaly_Deviation / Discrepancy - Procedural Other / Unknown": 2.0,
+    "Anomaly_Flight Deck / Cabin / Aircraft Event Passenger Misconduct": 2.0,
+    "Anomaly_Flight Deck / Cabin / Aircraft Event Passenger Electronic Device": 1.5,
+}
 ERROR_ANOM_COLS: List[str] = list(error_weights.keys())
 VIOL_ANOM_COLS: List[str] = list(viol_weights.keys())
  
@@ -60,23 +96,36 @@ def make_three_class_target(
     viol_col: str,
     tie_break: str = "error",
 ) -> Tuple[pd.Series, pd.DataFrame]:
-    """Build 3-class target: 0=neither, 1=Error, 2=Violation. Tie-breaking as described."""
+    """
+    Build 3-class target:
+      0 = neither (0,0)
+      1 = Error (1,0) + (1,1) assigned to Error
+      2 = Violation (0,1) + (1,1) assigned to Violation
+    For (1,1):
+      - compare counts of active anomaly columns
+      - if tie, compare weighted sums
+      - if still tie, tie_break decides
+    """
     if tie_break not in {"error", "violation"}:
         raise ValueError("tie_break must be 'error' or 'violation'")
     if error_col not in df.columns or viol_col not in df.columns:
         raise KeyError(f"Missing target columns: {error_col} / {viol_col}")
-
     err_flag = (pd.to_numeric(df[error_col], errors="coerce").fillna(0) > 0).astype(int)
     vio_flag = (pd.to_numeric(df[viol_col], errors="coerce").fillna(0) > 0).astype(int)
-    err_df, vio_df = _safe_binary_df(df, ERROR_ANOM_COLS), _safe_binary_df(df, VIOL_ANOM_COLS)
-    err_count, vio_count = err_df.sum(axis=1), vio_df.sum(axis=1)
-    err_wsum = sum(err_df[c] * w for c, w in error_weights.items())
-    vio_wsum = sum(vio_df[c] * w for c, w in viol_weights.items())
-
-    y3 = pd.Series(0, index=df.index)
+    err_df = _safe_binary_df(df, ERROR_ANOM_COLS)
+    vio_df = _safe_binary_df(df, VIOL_ANOM_COLS)
+    err_count = err_df.sum(axis=1)
+    vio_count = vio_df.sum(axis=1)
+    err_wsum = pd.Series(0.0, index=df.index)
+    for c, w in error_weights.items():
+        err_wsum += err_df[c] * w
+    vio_wsum = pd.Series(0.0, index=df.index)
+    for c, w in viol_weights.items():
+        vio_wsum += vio_df[c] * w
+    # Base mapping for non-both
+    y3 = pd.Series(np.zeros(len(df), dtype=int), index=df.index)
     y3[(err_flag == 1) & (vio_flag == 0)] = 1
     y3[(err_flag == 0) & (vio_flag == 1)] = 2
-
     both = (err_flag == 1) & (vio_flag == 1)
     if both.any():
         to_error = both & (err_count > vio_count)
@@ -91,7 +140,6 @@ def make_three_class_target(
             to_viol |= tie_weight
         y3[to_error] = 1
         y3[to_viol] = 2
-
     debug = pd.DataFrame({
         "Error_flag": err_flag,
         "Violation_flag": vio_flag,
@@ -116,28 +164,38 @@ def coerce_numeric_features(df: pd.DataFrame, cols: Tuple[str, ...]) -> pd.DataF
     return out
  
  
+# =========================
+ 
+# Main
+ 
+# =========================
  
 def main() -> None:
  
     ensure_dir(CFG.out_dir)
-
-    # Load data
+ 
+    # Load
+ 
+ 
     df = pd.read_csv(CFG.data_file)
+ 
 
-    # Expand feature categories to subcategory columns using hfacs_categories (only once)
+    # Expand feature categories to subcategory columns using hfacs_categories
     feature_cols = []
     for cat in CFG.feature_categories:
         subcats = hfacs_categories.get(cat, [])
         feature_cols.extend(subcats)
 
-    # Coerce numeric features and drop NaNs
     df = coerce_numeric_features(df, tuple(feature_cols))
+
+    # Drop rows with missing feature values
     before = len(df)
     df = df.dropna(subset=feature_cols)
     after = len(df)
     if after < before:
-        print(f" Dropped {before - after} rows due to NaNs in feature columns.")
-
+        print(f"⚠️ Dropped {before - after} rows due to NaNs in feature columns.")
+    print(f"Number of accidents before balancing: {after}")
+ 
     # Build 3-class target
     y3, debug = make_three_class_target(
         df=df,
@@ -145,20 +203,26 @@ def main() -> None:
         viol_col=CFG.viol_target_col,
         tie_break=CFG.tie_break,
     )
-
+ 
     # Count each group after scoring and grouping
     group_counts = y3.value_counts().sort_index()
     print("\nClass distribution after scoring and grouping:")
     for group, count in group_counts.items():
         label = {0: "Neither", 1: "Error", 2: "Violation"}.get(group, str(group))
         print(f"  {label} ({group}): {count}")
-
+ 
     # Save debug assignment file
     debug_path = os.path.join(CFG.out_dir, "svm_debug_assignment.csv")
     debug.to_csv(debug_path, index=False)
-
-    # Features matrix
+ 
+    # Features
+    # Expand feature categories to subcategory columns using hfacs_categories
+    feature_cols = []
+    for cat in CFG.feature_categories:
+        subcats = hfacs_categories.get(cat, [])
+        feature_cols.extend(subcats)
     X = df.loc[:, feature_cols].astype(float)
+ 
 
     # Balance the groups (simple undersampling for demonstration)
     from sklearn.utils import resample
@@ -171,7 +235,8 @@ def main() -> None:
     X_bal = X.loc[balanced_indices].reset_index(drop=True)
     y_bal = y3.loc[balanced_indices].reset_index(drop=True)
     debug_bal = debug.loc[balanced_indices].reset_index(drop=True)
-
+    print(f"Number of accidents after balancing: {len(X_bal)}")
+ 
     # Split (stratify by y_bal if possible)
     stratify = y_bal if y_bal.nunique() > 1 else None
     X_train, X_test, y_train, y_test, idx_train, idx_test = train_test_split(
@@ -180,8 +245,9 @@ def main() -> None:
         random_state=CFG.seed,
         stratify=stratify,
     )
-
+ 
     # Model pipeline
+ 
     pipe = Pipeline([
         ("scaler", StandardScaler()),
         ("svc", SVC(probability=False)),
@@ -192,7 +258,7 @@ def main() -> None:
         {"svc__kernel": ["rbf"], "svc__C": list(CFG.c_grid), "svc__gamma": ["scale", "auto"]},
         {"svc__kernel": ["poly"], "svc__C": list(CFG.c_grid), "svc__degree": list(CFG.degree_grid), "svc__gamma": ["scale", "auto"]},
     ]
-
+ 
     grid = GridSearchCV(
         estimator=pipe,
         param_grid=param_grid,
@@ -211,19 +277,13 @@ def main() -> None:
     print("\nConfusion matrix (rows=true, cols=pred):\n", confusion_matrix(y_test, y_pred))
     print("\nClassification report (0=Neither, 1=Error, 2=Violation):\n")
     print(classification_report(y_test, y_pred, digits=4))
-
-    # Expose y_test and y_pred as module-level variables for main.py
-    import sys
-    module = sys.modules[__name__]
-    module.y_test = y_test
-    module.y_pred = y_pred
-
     # Save predictions with debug info
     pred_df = pd.DataFrame({
         "index": idx_test,
         "y_true": y_test.values,
         "y_pred": y_pred,
     })
+
     debug_test = debug.loc[idx_test].reset_index(drop=True)
     pred_df = pd.concat([pred_df.reset_index(drop=True), debug_test], axis=1)
     pred_path = os.path.join(CFG.out_dir, "svm_predictions.csv")
@@ -231,10 +291,9 @@ def main() -> None:
     print("\nSaved:")
     print(" -", debug_path)
     print(" -", pred_path)
- 
-if __name__ == "__main__":
-    main()
- 
- 
- 
+
+    # Print the contents of the saved files
+    print("\nContents of svm_debug_assignment.csv:")
+    try:
+        debug_df = pd.read_csv(debug_path)
  
