@@ -73,13 +73,16 @@ def plot_dag(
 		G,
 		pos,
 		ax=plt.gca(),
-		width=2.0,  # constant thickness for all edges
+		width=2.0,
 		edge_color="dimgray",
 		arrows=True,
 		arrowstyle="-|>",
-		arrowsize=60,  # make arrowheads even larger and more obvious
+		arrowsize=60,
 		min_source_margin=15,
 		min_target_margin=15,
+		connectionstyle='arc3,rad=0.2',
+		# Place arrows at the midpoint of the edge
+		# This is not directly supported, but we can use label_pos for edge labels and curved edges for clarity
 	)
 
 	# Draw edge labels for conditional probabilities if available
@@ -95,7 +98,7 @@ def plot_dag(
 			edge_labels=edge_labels,
 			font_color='blue',
 			font_size=14,
-			label_pos=0.7  # Move labels further from nodes
+			label_pos=0.5  # Place labels at the midpoint of the edge
 		)
 
 	# Draw only rectangles with category names (no networkx node shapes)
