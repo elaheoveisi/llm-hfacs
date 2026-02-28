@@ -4,9 +4,83 @@ import pandas as pd
 from pathlib import Path
 import networkx as nx
  
-from causallearn.search.ScoreBased.GES import ges
 
+from causallearn.search.ScoreBased.GES import ges
 from visualization.dag_graph import plot_dag
+
+# --- Load config from YAML (reuse svm.py logic) ---
+import os
+with open(os.path.join(os.path.dirname(__file__), '../../configs/config.yaml'), 'r', encoding='utf-8') as f:
+    config_yaml = yaml.safe_load(f)
+
+hfacs_categories = config_yaml['hfacs_categories']
+dag_cfg = config_yaml.get('dag', {})
+
+# Weights (reuse svm.py logic)
+error_weights = config_yaml.get('error_weights', {})
+viol_weights = config_yaml.get('viol_weights', {})
+ERROR_ANOM_COLS = list(error_weights.keys())
+VIOL_ANOM_COLS = list(viol_weights.keys())
+
+def _safe_binary_df(df: pd.DataFrame, cols: list[str]) -> pd.DataFrame:
+    """Return a 0/1 dataframe for requested cols; missing cols are treated as 0."""
+    out = pd.DataFrame(index=df.index)
+    for c in cols:
+        if c in df.columns:
+            s = pd.to_numeric(df[c], errors="coerce").fillna(0)
+            out[c] = (s > 0).astype(int)
+        else:
+            out[c] = 0
+    return out
+
+def make_three_class_target(
+    df: pd.DataFrame,
+    error_col: str,
+    viol_col: str,
+    tie_break: str = "error",
+) -> tuple[pd.Series, pd.DataFrame]:
+    """Build 3-class target: 0=neither, 1=Error, 2=Violation. Tie-breaking as described."""
+    if tie_break not in {"error", "violation"}:
+        raise ValueError("tie_break must be 'error' or 'violation'")
+    if error_col not in df.columns or viol_col not in df.columns:
+        raise KeyError(f"Missing target columns: {error_col} / {viol_col}")
+
+    err_flag = (pd.to_numeric(df[error_col], errors="coerce").fillna(0) > 0).astype(int)
+    vio_flag = (pd.to_numeric(df[viol_col], errors="coerce").fillna(0) > 0).astype(int)
+    err_df, vio_df = _safe_binary_df(df, ERROR_ANOM_COLS), _safe_binary_df(df, VIOL_ANOM_COLS)
+    err_count, vio_count = err_df.sum(axis=1), vio_df.sum(axis=1)
+    err_wsum = sum(err_df[c] * w for c, w in error_weights.items())
+    vio_wsum = sum(vio_df[c] * w for c, w in viol_weights.items())
+
+    y3 = pd.Series(0, index=df.index)
+    y3[(err_flag == 1) & (vio_flag == 0)] = 1
+    y3[(err_flag == 0) & (vio_flag == 1)] = 2
+
+    both = (err_flag == 1) & (vio_flag == 1)
+    if both.any():
+        to_error = both & (err_count > vio_count)
+        to_viol  = both & (vio_count > err_count)
+        tie_count = both & (err_count == vio_count)
+        to_error |= tie_count & (err_wsum > vio_wsum)
+        to_viol  |= tie_count & (vio_wsum > err_wsum)
+        tie_weight = tie_count & (err_wsum == vio_wsum)
+        if tie_break == "error":
+            to_error |= tie_weight
+        else:
+            to_viol |= tie_weight
+        y3[to_error] = 1
+        y3[to_viol] = 2
+
+    debug = pd.DataFrame({
+        "Error_flag": err_flag,
+        "Violation_flag": vio_flag,
+        "Err_anom_count": err_count,
+        "Viol_anom_count": vio_count,
+        "Err_weight_sum": err_wsum,
+        "Viol_weight_sum": vio_wsum,
+        "y3": y3,
+    }, index=df.index)
+    return y3, debug
 
 
 
@@ -189,6 +263,7 @@ def export_dag_outputs(G: nx.DiGraph, output_dir: str) -> None:
 
 
 
+
 def run_hfacs_causal_learn_ges(
     config_path: str = "./configs/config.yaml",
     data_path: str = "./data/processed/step3_hfacs_categories.csv",
@@ -201,7 +276,18 @@ def run_hfacs_causal_learn_ges(
     df = load_hfacs_data(data_path)
     categories = get_category_columns(config)
 
+    # --- Apply three-class scoring/weighting before DAG creation ---
+    # You can change these column names if needed
+    error_col = config.get('svm', {}).get('error_target_col', 'Error')
+    viol_col = config.get('svm', {}).get('viol_target_col', 'Violation')
+    tie_break = config.get('svm', {}).get('tie_break', 'error')
+    # Add y3 and debug columns to df
+    y3, debug = make_three_class_target(df, error_col, viol_col, tie_break)
+    df['y3'] = y3
+    # Use only rows with y3 > 0 (Error or Violation) for DAG learning
+    df = df[df['y3'] > 0].copy()
 
+    # Now proceed to DAG learning as before
     G, record = learn_dag_ges(
         df=df,
         categories=categories,
@@ -210,12 +296,9 @@ def run_hfacs_causal_learn_ges(
         score_func=score_func,
     )
 
-    
-
     export_dag_outputs(G, output_dir)
     plot_dag(G, save_path=str(Path(output_dir) / "learned_dag.pdf"))
 
-    # record often includes a score; keep print safe
     score = record.get("score", None)
     score_path = Path(output_dir) / "learned_dag_score.txt"
     if score is not None:
