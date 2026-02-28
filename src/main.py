@@ -324,7 +324,7 @@ with skip_run("skip", "bayesian") as check:
 
 
 
-with skip_run("run", "svm") as check:
+with skip_run("skip", "svm") as check:
     if check():
         from features import svm
         print("[INFO] Running SVM prediction...")
@@ -337,7 +337,7 @@ with skip_run("run", "svm") as check:
        
 
 
-with skip_run("skip", "dag") as check:
+with skip_run("run", "dag") as check:
     if check():
         print("[INFO] Running DAG discovery with causal-learn...")
         run_hfacs_causal_learn_ges(
