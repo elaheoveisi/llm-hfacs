@@ -144,6 +144,11 @@ def make_three_class_target(
         "Viol_weight_sum": vio_wsum,
         "y3": y3,
     })
+    # Remove ambiguous cases with zero weighted sum (cannot resolve)
+    ambiguous = debug[(debug["Error_flag"] == 1) & (debug["Violation_flag"] == 1) & (debug["Err_weight_sum"] == 0) & (debug["Viol_weight_sum"] == 0)]
+    if not ambiguous.empty:
+        debug = debug.drop(ambiguous.index)
+        y3 = y3.drop(ambiguous.index)
     return y3, debug
 
 
