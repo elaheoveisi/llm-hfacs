@@ -1,3 +1,30 @@
+import yaml
+import numpy as np
+import pandas as pd
+from sklearn.metrics import classification_report, confusion_matrix
+import yaml
+import os
+from pathlib import Path
+import csv
+from features.hfacs_order_probability import (
+    HFACS_ORDER,
+    compute_all_full_hfacs_chains,
+    compute_combined_hfacs_matrix,
+    compute_hfacs_ordered_probabilities,
+)
+from utils import skip_run
+from features.DAG import run_hfacs_causal_learn_ges
+
+# --- Add code to save SVM results table ---
+with open("./configs/config.yaml", "r") as f:
+    config = yaml.safe_load(f)
+
+paths = config["paths"]
+source_columns = config["source_columns"]
+hfacs_map = config["hfacs_categories"]
+processed_dir = os.path.dirname(paths["processed_csv"]) or "./data/processed"
+processed_csv_path = Path(paths["processed_csv"])
+
 # --- Add code to save SVM results table ---
 import numpy as np
 import pandas as pd
@@ -50,88 +77,42 @@ def balance_joint_categories(df, error_col="Error", violation_col="Violation", r
     return balanced_df
 
 
-
-
-# Function to run Bayesian DAG processing
-def run_bayesian_dag(out_dir):
-    """
-    Prune Bayesian DAG edges and draw the DAG PDF.
-    Args:
-        out_dir (Path or str): Output directory for saving results.
-    """
-    from features import bayesian as bayesian_module
-    import pandas as pd
-    from pathlib import Path
-    out_dir = Path(out_dir)
-    df_bayes_path = out_dir / "hfacs_bayesian_dag_edges.csv"
-    if not df_bayes_path.exists():
-        print(f"[WARN] {df_bayes_path} not found. Skipping Bayesian DAG processing.")
-        return
-    df_bayes = pd.read_csv(df_bayes_path)
-    pruned = bayesian_module.threshold_prune_edges(
-        df_bayes,
-        alpha=1.0,
-        beta=1.0,
-        min_keep_score=-3.0,
+# Use robust CSV loader for df
+if not processed_csv_path.exists():
+    raise FileNotFoundError(
+        f"Processed dataset not found: {processed_csv_path}. "
+        "This pipeline is configured to use processed_output.csv as the source dataset."
     )
-    pruned.to_csv(out_dir / "hfacs_bayesian_dag_edges_threshold_pruned.csv", index=False)
-    bayesian_module.draw_dag_pdf(
-        pruned,
-        str(out_dir / "bayesian_dag_threshold_pruned.pdf"),
-        "Bayesian HFACS DAG (after threshold pruning)",
-    )
+print(f"[INFO] Using existing processed dataset: {processed_csv_path}")
+def read_csv_robust(csv_path: Path) -> pd.DataFrame:
+    try:
+        return pd.read_csv(csv_path)
+    except Exception as e:
+        print(f"[WARN] pandas read_csv failed for {csv_path}: {e}")
+        print("[INFO] Retrying with Python csv parser fallback...")
+        with csv_path.open("r", encoding="utf-8", errors="replace", newline="") as f:
+            reader = csv.DictReader(f)
+            rows = list(reader)
+        return pd.DataFrame(rows)
+df = read_csv_robust(processed_csv_path)
+# --- Pipeline execution blocks (fix indentation) ---
+with skip_run("run", "load_raw_dataset") as check:
+    if check():
+        print("[INFO] Skipping raw dataset load (using processed_output.csv).")
 
+with skip_run("run", "create_hfacs_category_data") as check:
+    if check():
+        print("[INFO] Skipping HFACS regeneration/writes (using processed_output.csv).")
 
-    # HFACS chain function
-    # from models.prediction import compute_full_chain
-
-
-
-    # Prune using the function from bayesian.py
-    pruned = bayesian_module.threshold_prune_edges(
-        df_bayes,
-        alpha=1.0,
-        beta=1.0,
-        min_keep_score=-3.0,
-    )
-
-    pruned.to_csv(out_dir / "hfacs_bayesian_dag_edges_threshold_pruned.csv", index=False)
-
-    paths = config["paths"]
-    source_columns = config["source_columns"]
-    hfacs_map = config["hfacs_categories"]
-    processed_dir = os.path.dirname(paths["processed_csv"]) or "./data/processed"
-    processed_csv_path = Path(paths["processed_csv"])
-
-    if not processed_csv_path.exists():
-        raise FileNotFoundError(
-            f"Processed dataset not found: {processed_csv_path}. "
-            "This pipeline is configured to use processed_output.csv as the source dataset."
+with skip_run("run", "hfacs_ordered_probabilities") as check:
+    if check():
+        print("[INFO] Computing HFACS-ordered conditional probabilities...")
+        compute_hfacs_ordered_probabilities(
+            df,
+            hfacs_order=HFACS_ORDER,
+            output_dir="./data/processed",
         )
-
-    print(f"[INFO] Using existing processed dataset: {processed_csv_path}")
-    df = read_csv_robust(processed_csv_path)
-
-
-    with skip_run("run", "load_raw_dataset") as check:
-        if check():
-            print("[INFO] Skipping raw dataset load (using processed_output.csv).")
-
-
-    with skip_run("run", "create_hfacs_category_data") as check:
-        if check():
-            print("[INFO] Skipping HFACS regeneration/writes (using processed_output.csv).")
-
-
-    with skip_run("run", "hfacs_ordered_probabilities") as check:
-        if check():
-            print("[INFO] Computing HFACS-ordered conditional probabilities...")
-            compute_hfacs_ordered_probabilities(
-                df,
-                hfacs_order=HFACS_ORDER,
-                output_dir="./data/processed",
-            )
-            print("[INFO] HFACS ordered probability tables saved.")
+        print("[INFO] HFACS ordered probability tables saved.")
 
 
     with skip_run("run", "hfacs_full_chains") as check:
@@ -222,23 +203,7 @@ def read_csv_robust(csv_path: Path) -> pd.DataFrame:
         return pd.DataFrame(rows)
 
 
-with open("./configs/config.yaml", "r") as f:
-    config = yaml.safe_load(f)
-
-paths = config["paths"]
-source_columns = config["source_columns"]
 hfacs_map = config["hfacs_categories"]
-processed_dir = os.path.dirname(paths["processed_csv"]) or "./data/processed"
-processed_csv_path = Path(paths["processed_csv"])
-
-if not processed_csv_path.exists():
-    raise FileNotFoundError(
-        f"Processed dataset not found: {processed_csv_path}. "
-        "This pipeline is configured to use processed_output.csv as the source dataset."
-    )
-
-
-print(f"[INFO] Using existing processed dataset: {processed_csv_path}")
 df = read_csv_robust(processed_csv_path)
 
 # Count and print the number in each of the four joint categories (Error, Violation)
@@ -318,7 +283,6 @@ with skip_run("run", "hfacs_conditional_probabilities") as check:
 with skip_run("skip", "bayesian") as check:
     if check():
         print("[INFO] Running Bayesian HFACS processing...")
-        run_bayesian_dag(processed_dir)
 
 
 
@@ -337,14 +301,6 @@ with skip_run("skip", "svm") as check:
        
 
 
-with skip_run("run", "dag") as check:
-    if check():
-        print("[INFO] Running DAG discovery with causal-learn...")
-        run_hfacs_causal_learn_ges(
-            config_path="configs/config.yaml",
-            data_path="data/processed/step3_hfacs_categories.csv",
-            output_dir="data/processed",
-            sink_nodes=("Error", "Violation"),
-            score_func="local_score_BDeu",
-        )
-        print("[INFO] DAG discovery complete.")
+#with skip_run("run", "dag") as check:
+    #if check():
+       #

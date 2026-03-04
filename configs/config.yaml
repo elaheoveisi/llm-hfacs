@@ -155,3 +155,37 @@ svm:
   seed: 7
   degree_grid: [2, 3]
   c_grid: [0.01, 0.1, 1, 10, 100]
+
+  error_weights:
+    'Anomaly_Conflict Airborne Conflict': 5
+    'Anomaly_Conflict Ground Conflict, Critical': 5
+    'Anomaly_Conflict Ground Conflict, Less Severe': 3
+    'Anomaly_Conflict NMAC': 5
+    'Anomaly_Deviation - Altitude Excursion From Assigned Altitude': 3
+    'Anomaly_Deviation - Altitude Overshoot': 2
+    'Anomaly_Deviation - Altitude Undershoot': 2
+    'Anomaly_Deviation - Speed All Types': 2
+    'Anomaly_Deviation - Track / Heading All Types': 2
+    'Anomaly_Inflight Event / Encounter Loss Of Aircraft Control': 5
+    'Anomaly_Ground Event / Encounter Loss Of Aircraft Control': 5
+    'Anomaly_Inflight Event / Encounter Unstabilized Approach': 4
+    'Anomaly_Inflight Event / Encounter VFR In IMC': 5
+    'Anomaly_Inflight Event / Encounter CFTT / CFIT': 5
+    'Anomaly_Inflight Event / Encounter Fly Away (UAS)': 4
+    'Anomaly_Inflight Event / Encounter Fuel Issue': 4
+    'Anomaly_Ground Event / Encounter Fuel Issue': 3
+    'Anomaly_Ground Event / Encounter Gear Up Landing': 4
+
+  viol_weights:
+    'Anomaly_Airspace Violation All Types': 5
+    'Anomaly_Deviation / Discrepancy - Procedural Clearance': 4
+    'Anomaly_Deviation / Discrepancy - Procedural FAR': 5
+    'Anomaly_Deviation / Discrepancy - Procedural Hazardous Material Violation': 5
+    'Anomaly_Deviation / Discrepancy - Procedural Landing Without Clearance': 5
+    'Anomaly_Deviation / Discrepancy - Procedural MEL / CDL': 4
+    'Anomaly_Deviation / Discrepancy - Procedural Other / Unknown': 2
+    'Anomaly_Deviation / Discrepancy - Procedural Published Material / Policy': 3
+    'Anomaly_Deviation / Discrepancy - Procedural Unauthorized Flight Operations (UAS)': 5
+    'Anomaly_Deviation / Discrepancy - Procedural Weight And Balance': 4
+    'Anomaly_Flight Deck / Cabin / Aircraft Event Passenger Misconduct': 2
+    'Anomaly_Flight Deck / Cabin / Aircraft Event Passenger Electronic Device': 1
