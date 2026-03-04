@@ -158,8 +158,7 @@ svm:
 
   error_weights:
     'Anomaly_Conflict Airborne Conflict': 5
-    'Anomaly_Conflict Ground Conflict, Critical': 5
-    'Anomaly_Conflict Ground Conflict, Less Severe': 3
+    'Anomaly_Conflict Ground Conflict': 5
     'Anomaly_Conflict NMAC': 5
     'Anomaly_Deviation - Altitude Excursion From Assigned Altitude': 3
     'Anomaly_Deviation - Altitude Overshoot': 2

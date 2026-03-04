@@ -119,19 +119,19 @@ def make_three_class_target(
 
     both = (err_flag == 1) & (vio_flag == 1)
     if both.any():
+        # 1. Use anomaly counts
         to_error = both & (err_count > vio_count)
-        to_viol = both & (vio_count > err_count)
-
+        to_viol  = both & (vio_count > err_count)
+        # 2. If counts are tied, use weighted sum
         tie_count = both & (err_count == vio_count)
         to_error |= tie_count & (err_wsum > vio_wsum)
-        to_viol |= tie_count & (vio_wsum > err_wsum)
-
+        to_viol  |= tie_count & (vio_wsum > err_wsum)
+        # 3. If still tied (counts and weights), use tie-break
         tie_weight = tie_count & (err_wsum == vio_wsum)
         if tie_break == "error":
             to_error |= tie_weight
         else:
             to_viol |= tie_weight
-
         y3[to_error] = 1
         y3[to_viol] = 2
 
