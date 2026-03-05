@@ -60,7 +60,8 @@ def make_three_class_target(
     viol_col: str,
     tie_break: str = "error",
 ) -> Tuple[pd.Series, pd.DataFrame]:
-    """Build 3-class target: 0=neither, 1=Error, 2=Violation. Tie-breaking as described."""
+    """Build 3-class target: 0=neither, 1=Error, 2=Violation. 
+    Tie-breaking: 1) count, 2) weighted sum, 3) remove if unresolved."""
     if tie_break not in {"error", "violation"}:
         raise ValueError("tie_break must be 'error' or 'violation'")
     if error_col not in df.columns or viol_col not in df.columns:
@@ -70,8 +71,8 @@ def make_three_class_target(
     vio_flag = (pd.to_numeric(df[viol_col], errors="coerce").fillna(0) > 0).astype(int)
     err_df, vio_df = _safe_binary_df(df, ERROR_ANOM_COLS), _safe_binary_df(df, VIOL_ANOM_COLS)
     err_count, vio_count = err_df.sum(axis=1), vio_df.sum(axis=1)
-    err_wsum = sum(err_df[c] * w for c, w in error_weights.items())
-    vio_wsum = sum(vio_df[c] * w for c, w in viol_weights.items())
+    err_wsum = sum(err_df[c] * w for c, w in error_weights.items()) if error_weights else pd.Series(0, index=df.index)
+    vio_wsum = sum(vio_df[c] * w for c, w in viol_weights.items()) if viol_weights else pd.Series(0, index=df.index)
 
     y3 = pd.Series(0, index=df.index)
     y3[(err_flag == 1) & (vio_flag == 0)] = 1
@@ -86,15 +87,6 @@ def make_three_class_target(
         tie_count = both & (err_count == vio_count)
         to_error |= tie_count & (err_wsum > vio_wsum)
         to_viol  |= tie_count & (vio_wsum > err_wsum)
-        # 3. If still tied (counts and weights), alternate tie-break
-        tie_weight = tie_count & (err_wsum == vio_wsum)
-        tie_indices = y3.index[tie_weight]
-        # Alternate assignment: odd index to error (1), even to violation (2)
-        for i, idx in enumerate(tie_indices):
-            if i % 2 == 0:
-                y3.at[idx] = 1
-            else:
-                y3.at[idx] = 2
         y3[to_error] = 1
         y3[to_viol] = 2
 
@@ -107,9 +99,13 @@ def make_three_class_target(
         "Viol_weight_sum": vio_wsum,
         "y3": y3,
     }, index=df.index)
-    # Remove ambiguous cases with zero weighted sum (cannot resolve)
-    ambiguous = debug[(debug["Error_flag"] == 1) & (debug["Violation_flag"] == 1) & (debug["Err_weight_sum"] == 0) & (debug["Viol_weight_sum"] == 0)]
+    
+    # Remove ambiguous cases that couldn't be resolved by count or weighted sum
+    ambiguous = debug[(debug["Error_flag"] == 1) & (debug["Violation_flag"] == 1) & 
+                      (debug["Err_anom_count"] == debug["Viol_anom_count"]) &
+                      (debug["Err_weight_sum"] == debug["Viol_weight_sum"])]
     if not ambiguous.empty:
+        print(f"  Removing {len(ambiguous)} ambiguous rows (both Error & Violation, unresolved by count/weight)")
         debug = debug.drop(ambiguous.index)
         y3 = y3.drop(ambiguous.index)
     return y3, debug
