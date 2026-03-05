@@ -280,12 +280,11 @@ with skip_run("run", "hfacs_conditional_probabilities") as check:
         print(f"[INFO] Conditional probability tables saved to {processed_dir} and all_conditional_probabilities.csv")
 
 
-with skip_run("skip", "bayesian") as check:
+with skip_run("run", "bayesian") as check:
     if check():
-        print("[INFO] Running Bayesian HFACS processing...")
-
-
-
+        from features import bayesian
+        print("[INFO] Running Bayesian Network prediction...")
+        bayesian.main()
 
 
 with skip_run("skip", "svm") as check:
