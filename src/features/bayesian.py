@@ -1,20 +1,3 @@
-"""
-One Bayesian Network with:
-- category-level DAG nodes
-- three separate class nodes in the same DAG:
-    Neither, Error_Class, Violation_Class
-- scoring/weighting used ONLY to create true 3-class labels
-- balancing by undersampling on true 3-class labels
-- one DAG
-- one 3x3 confusion matrix
-
-Rules:
-- no edges among the three class nodes
-- no class node -> category node edges
-- categories can point to class nodes
-
-Outputs -> ./bn_outputs/
-"""
 
 from __future__ import annotations
 import os
@@ -191,11 +174,7 @@ def decode_three_nodes(df_pred: pd.DataFrame) -> np.ndarray:
     """
     arr = df_pred[["Neither", "Error_Class", "Violation_Class"]].to_numpy(dtype=int)
 
-    # If all zero or multiple ones happen, argmax still returns one class.
-    # Column order fixes the decoding:
-    # 0 -> Neither, 1 -> Error, 2 -> Violation
     return arr.argmax(axis=1)
-
 
 # -------------------- balancing --------------------
 def balance_undersample(df: pd.DataFrame, target_col: str, seed: int) -> pd.DataFrame:
@@ -297,20 +276,23 @@ def save_dag(edges: List[Tuple[str, str]], nodes: List[str], out_dir: str) -> No
     G.add_edges_from(edges)
     nx.to_pandas_adjacency(G, nodelist=nodes).to_csv(out / "bn_dag_adjacency.csv")
 
+    # Try both absolute and relative imports for plot_dag
     try:
         from visualization.dag_graph import plot_dag
-        plot_dag(G, save_path=str(out / "bn_dag.pdf"))
-    except Exception:
+    except ModuleNotFoundError:
         try:
-            import matplotlib.pyplot as plt
-            plt.figure(figsize=(11, 8))
-            pos = nx.spring_layout(G, seed=7)
-            nx.draw(G, pos, with_labels=True, node_size=1800, font_size=8, arrows=True)
-            plt.tight_layout()
-            plt.savefig(out / "bn_dag.pdf")
-            plt.close()
-        except Exception:
-            pass
+            from src.visualization.dag_graph import plot_dag
+        except ModuleNotFoundError:
+            import importlib.util
+            import sys, os
+            dag_graph_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../visualization/dag_graph.py'))
+            spec = importlib.util.spec_from_file_location('dag_graph', dag_graph_path)
+            dag_graph = importlib.util.module_from_spec(spec)
+            sys.modules['dag_graph'] = dag_graph
+            spec.loader.exec_module(dag_graph)
+            plot_dag = dag_graph.plot_dag
+
+    plot_dag(G, save_path=str(out / "bn_dag.pdf"))
 
 
 # -------------------- main --------------------
