@@ -24,7 +24,9 @@ prompt_template: |
 
   3. Use a branching, relational (tree-of-thought) reasoning process: For each category, branch into possible sub-factors and explain how they might influence or interact with other categories, ultimately leading to Error, Violation, or Neither. Think of the categories as nodes in a DAG, where relationships and causality flow toward the final outcome. Describe the relationships and structure of your reasoning.
 
-  4. Output your reasoning for each category and the relationships you see, then provide your final prediction: Error, Violation, or Neither.
+   4. Output your reasoning for each category and the relationships you see, then provide your final prediction: Error, Violation, or Neither.
+
+   Important: Your final prediction (Error, Violation, or Neither) must be made based only on the narrative and callback text above. Do not use or reference any existing error or violation columns from the data. Your prediction should be independent of any prior labels.
 
   Example output format:
     Condition_of_Operators: 1 (Reason: ...)
