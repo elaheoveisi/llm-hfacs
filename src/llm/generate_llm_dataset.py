@@ -72,10 +72,18 @@ def parse_llm_output(output):
     # Parse the LLM output into a dict of predictions
     # This function should be customized to match your output format
     result = {}
+    final_prediction = None
     for line in output.splitlines():
         if ":" in line:
             k, v = line.split(":", 1)
-            result[k.strip()] = v.strip()
+            key = k.strip()
+            val = v.strip()
+            result[key] = val
+            if key.lower().startswith("final prediction"):
+                final_prediction = val
+    # Add a new column for the LLM's independent prediction
+    if final_prediction is not None:
+        result["llm_predicted_class"] = final_prediction
     return result
 
 
