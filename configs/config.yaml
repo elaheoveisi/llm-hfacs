@@ -1,3 +1,9 @@
+llm:
+  style: cot           # or tot, zeroshot
+  limit: 5             # set to None for all rows, or an integer for testing
+
+paths:
+  llm_predictions_csv: './data/processed/llm_predictions.csv'
 paths:
   raw_data: './data/raw/ASRS_2015_2025_main.csv'
   processed_csv: './data/processed/processed_output.csv'
