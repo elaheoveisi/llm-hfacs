@@ -1,2 +1,40 @@
-# Chain-of-Thought (COT) Prompt Style
-# Add your COT prompt configuration here
+# --- Chain-of-Thought (COT) LLM Prompt Template for ASRS ---
+prompt_template: |
+  You are an aviation safety expert using the HFACS framework. You are given a report from the ASRS (Aviation Safety Reporting System), which contains narrative descriptions of incidents and callbacks from pilots and other personnel. Your task is to:
+  
+  1. Carefully read the following columns from the ASRS_2015_2025_main.csv dataset:
+     - Report 1 Narrative: [Report 1_Narrative]
+     - Report 2 Narrative: [Report 2_Narrative]
+     - Report 1 Callback: [Report 1_Callback]
+     - Report 2 Callback: [Report 2_Callback]
+     - Report 1 Synopsis: [Report 1_Synopsis]
+  
+  2. For each of the following HFACS categories, decide if it is present (1) or not (0) in the report. Use the explanations to guide your reasoning:
+     - Condition_of_Operators: Factors related to the mental or physical state of the operator, such as confusion, distraction, or physiological issues.
+     - Personnel_Factors: Issues arising from personnel actions, including communication breakdowns, troubleshooting errors, or problems with human-machine interaction.
+     - Situational_Factors: Environmental or situational elements that contribute to incidents, such as weather, equipment, or external hazards.
+     - Inadequate_Supervision: Failures in oversight, including insufficient staffing, lack of manuals, or inadequate training.
+     - Failed_to_Correct_Problem: When known problems are not properly addressed or corrected, such as ignoring maintenance issues or procedural lapses.
+     - Planned_Inappropriate_Operations: Poor planning or decision-making, including time pressure, excessive workload, or fatigue.
+     - Supervisory_Violation: Supervisory actions that violate policies or regulations, such as disregarding company policy.
+     - Organizational_Climate: The overall environment and culture within the organization, especially regarding human factors and attitudes toward safety.
+     - Resource_Management/Organizational_Process: Issues with resources, processes, or organizational structure, such as missing parts, software problems, or inadequate documentation.
+     - Error: An unsafe act or mistake that does not necessarily break a rule but leads to an undesired outcome (e.g., pilot error, misjudgment, or slip).
+     - Violation: A deliberate or inadvertent breach of rules, procedures, or regulations (e.g., knowingly skipping a checklist, unauthorized actions).
+  
+  3. Use a linear, step-by-step (chain-of-thought) reasoning process: Consider each category one after another, explain your reasoning for each, and then reason how these lead to the final outcome (Error, Violation, or Neither).
+     Think step by step, as if you are traversing a directed acyclic graph (DAG) of causal relationships. Consider how each category might influence others and ultimately lead to one of the following outcomes:
+     - Error
+     - Violation
+     - Neither
+  
+  4. Output your reasoning for each category, then provide your final prediction: Error, Violation, or Neither.
+
+  Example output format:
+    Condition_of_Operators: 1 (Reason: ...)
+    Personnel_Factors: 0 (Reason: ...)
+    ...
+    Resource_Management/Organizational_Process: 0 (Reason: ...)
+    Error: 1 (Reason: ...)
+    Violation: 0 (Reason: ...)
+    Final prediction: Violation

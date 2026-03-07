@@ -1,8 +1,6 @@
 import yaml
-import numpy as np
 import pandas as pd
 from sklearn.metrics import classification_report, confusion_matrix
-import yaml
 import os
 from pathlib import Path
 import csv
@@ -13,7 +11,10 @@ from features.hfacs_order_probability import (
     compute_hfacs_ordered_probabilities,
 )
 from utils import skip_run
-from features.DAG import run_hfacs_causal_learn_ges
+import yaml
+import os
+from pathlib import Path
+
 
 # --- Add code to save SVM results table ---
 with open("./configs/config.yaml", "r") as f:
@@ -26,22 +27,6 @@ processed_dir = os.path.dirname(paths["processed_csv"]) or "./data/processed"
 processed_csv_path = Path(paths["processed_csv"])
 
 # --- Add code to save SVM results table ---
-import numpy as np
-import pandas as pd
-from sklearn.metrics import classification_report, confusion_matrix
-import pandas as pd
-import yaml
-import os
-from pathlib import Path
-import csv
-from features.hfacs_order_probability import (
-    HFACS_ORDER,
-    compute_all_full_hfacs_chains,
-    compute_combined_hfacs_matrix,
-    compute_hfacs_ordered_probabilities,
-)
-from utils import skip_run
-from features.DAG import run_hfacs_causal_learn_ges
 
 
 
@@ -285,6 +270,17 @@ with skip_run("run", "bayesian") as check:
         from features import bayesian
         print("[INFO] Running Bayesian Network prediction...")
         bayesian.main()
+        pass
+
+
+with skip_run("run", "llm") as check:
+    if check():
+        try:
+            from features import llm
+            print("[INFO] Running LLM prediction...")
+            llm.main()
+        except ImportError:
+            print("[ERROR] features.llm module not found. Skipping LLM prediction.")
 
 
 with skip_run("skip", "svm") as check:
@@ -299,7 +295,3 @@ with skip_run("skip", "svm") as check:
             print("[WARN] y_test and y_pred not found in svm module; results not saved.")
        
 
-
-#with skip_run("run", "dag") as check:
-    #if check():
-       #
