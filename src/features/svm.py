@@ -231,7 +231,12 @@ def main() -> None:
         "y_true": y_test.values,
         "y_pred": y_pred,
     })
-    debug_test = debug.loc[idx_test].reset_index(drop=True)
+    # Fix: Use iloc if idx_test are positions, or ensure debug index matches idx_test
+    try:
+        debug_test = debug.loc[idx_test].reset_index(drop=True)
+    except KeyError:
+        # If idx_test are positions, use iloc
+        debug_test = debug.iloc[idx_test].reset_index(drop=True)
     pred_df = pd.concat([pred_df.reset_index(drop=True), debug_test], axis=1)
     pred_path = os.path.join(CFG.out_dir, "svm_predictions.csv")
     pred_df.to_csv(pred_path, index=False)

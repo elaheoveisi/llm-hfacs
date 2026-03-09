@@ -139,6 +139,12 @@ hfacs_categories:
 
 svm:
   data_file: 'step3_hfacs_categories.csv'   # relative to processed_dir
+  processed_dir: 'data/processed'
+  bn_output_dir: './bn_outputs'
+  bn_prior_type: 'BDeu'
+  bin_threshold: 0.0
+  error_target_col: 'Error'
+  viol_target_col: 'Violation'
 
   # Features (Level 2 + Level 3 + Level 4 summaries)
   feature_columns:
@@ -154,6 +160,12 @@ svm:
 
   # Targets (Level 1)
   target_columns:
+    - Error
+    - Violation
+
+  # BN output nodes
+  class_nodes:
+    - Neither
     - Error
     - Violation
 

@@ -14,6 +14,7 @@ from utils import skip_run
 import yaml
 import os
 from pathlib import Path
+from features.bayesian import run_bayesian_workflow
 
 
 # --- Add code to save SVM results table ---
@@ -267,13 +268,14 @@ with skip_run("run", "hfacs_conditional_probabilities") as check:
 
 with skip_run("run", "bayesian") as check:
     if check():
-        from features import bayesian
         print("[INFO] Running Bayesian Network prediction...")
-        bayesian.main()
-        pass
+        run_bayesian_workflow(
+            config_path="./configs/config.yaml",
+            data_file=paths["processed_csv"],
+        )
 
 
-with skip_run("run", "llm") as check:
+with skip_run("skip", "llm") as check:
     if check():
         try:
             from features import llm
@@ -293,5 +295,10 @@ with skip_run("skip", "svm") as check:
             save_svm_results(svm.y_test, svm.y_pred)
         else:
             print("[WARN] y_test and y_pred not found in svm module; results not saved.")
-       
+
+
+# Example: Run Bayesian workflow using config values
+
+
+
 
