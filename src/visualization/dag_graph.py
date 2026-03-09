@@ -31,6 +31,7 @@ def plot_dag(
 	save_path: str | None = None,
 	layout_seed: int = 42,
 	title: str = "Learned HFACS DAG (GES optimized)",
+	cpds=None,
 ) -> None:
 	def get_node_colors(labels):
 		palette = [
@@ -52,7 +53,7 @@ def plot_dag(
 
 
 	pos = nx.circular_layout(G)
-	plt.figure(figsize=(12, 8))
+	plt.figure(figsize=(12, 10))
 	node_labels = [prettify_label(n) for n in G.nodes]
 	node_colors = get_node_colors(node_labels)
 
@@ -68,21 +69,51 @@ def plot_dag(
 	else:
 		condprob_dict = {}
 
-	# Draw all edges with the same thickness
+	# Draw edges with thickness proportional to CPD-based strength if CPDs provided
+	edge_widths = []
+	edge_colors = []
+	cpd_dict = {cpd.variable: cpd for cpd in cpds} if cpds is not None else {}
+	for u, v in G.edges():
+		width = 2.0
+		if cpds is not None and v in cpd_dict:
+			cpd = cpd_dict[v]
+			# For binary child, use max diff between parent states
+			try:
+				# Find parent index
+				if u in cpd.variables:
+					parent_idx = cpd.variables.index(u)
+					# For each parent value, get P(child=1|parent)
+					# Assume binary, child=1 is last row
+					vals = []
+					for i in range(cpd.cardinality[parent_idx]):
+						# Get slice for parent value i
+						slc = [slice(None)] * len(cpd.variables)
+						slc[parent_idx] = i
+						arr = cpd.values[tuple(slc)]
+						# If child is last variable, arr is 1D, take last entry
+						if arr.ndim > 0:
+							vals.append(arr[-1])
+						else:
+							vals.append(arr)
+					# Strength: max diff between parent values
+					strength = abs(max(vals) - min(vals))
+					width = 1 + 7 * float(strength)  # scale [1,8]
+			except Exception:
+				pass
+		edge_widths.append(width)
+		edge_colors.append("dimgray")
 	nx.draw_networkx_edges(
 		G,
 		pos,
 		ax=plt.gca(),
-		width=2.0,
-		edge_color="dimgray",
+		width=edge_widths,
+		edge_color=edge_colors,
 		arrows=True,
 		arrowstyle="-|>",
 		arrowsize=60,
 		min_source_margin=15,
 		min_target_margin=15,
 		connectionstyle='arc3,rad=0.2',
-		# Place arrows at the midpoint of the edge
-		# This is not directly supported, but we can use label_pos for edge labels and curved edges for clarity
 	)
 
 	# Draw edge labels for conditional probabilities if available
