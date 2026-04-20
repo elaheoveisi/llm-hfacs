@@ -17,6 +17,12 @@ try:
 except Exception:
     from pgmpy.models import BayesianNetwork  # type: ignore
 from pgmpy.inference import VariableElimination
+from project_config import chdir_project_root, get_optional_path, load_config as load_project_config
+from features.utils import make_three_class_target
+from features.balancing import balance_undersample
+
+
+chdir_project_root()
 
 
 def load_yaml(path: str) -> dict:
@@ -27,54 +33,6 @@ def binarize_series(s: pd.Series, thr: float = 0.0) -> pd.Series:
     return (pd.to_numeric(s, errors="coerce").fillna(0) > thr).astype(int)
 
 
-def make_three_class_target(
-    df: pd.DataFrame, error_col: str, viol_col: str,
-    error_weights: Dict[str, float], viol_weights: Dict[str, float],
-    thr: float = 0.0,
-) -> Tuple[pd.Series, pd.DataFrame]:
-    """Build true labels: 0=Neither, 1=Error, 2=Violation.
-    Tie-breaking: 1) count, 2) weighted sum, 3) remove if unresolved."""
-    if error_col not in df.columns or viol_col not in df.columns:
-        raise KeyError(f"Missing target columns: {error_col} / {viol_col}")
-
-    err_flag, vio_flag = binarize_series(df[error_col], thr), binarize_series(df[viol_col], thr)
-
-    def binary_df(weights):
-        return pd.DataFrame({c: binarize_series(df[c], thr) if c in df.columns else 0
-                             for c in weights}, index=df.index)
-
-    err_df, vio_df = binary_df(error_weights), binary_df(viol_weights)
-    err_count, vio_count = err_df.sum(axis=1), vio_df.sum(axis=1)
-    err_wsum = sum(err_df[c] * w for c, w in error_weights.items()) if error_weights else pd.Series(0, index=df.index)
-    vio_wsum = sum(vio_df[c] * w for c, w in viol_weights.items()) if viol_weights else pd.Series(0, index=df.index)
-
-    y3 = pd.Series(0, index=df.index, dtype=int)
-    y3[(err_flag == 1) & (vio_flag == 0)] = 1
-    y3[(err_flag == 0) & (vio_flag == 1)] = 2
-
-    both = (err_flag == 1) & (vio_flag == 1)
-    if both.any():
-        to_error = both & (err_count > vio_count)
-        to_viol  = both & (vio_count > err_count)
-        tie_count = both & (err_count == vio_count)
-        to_error |= tie_count & (err_wsum > vio_wsum)
-        to_viol  |= tie_count & (vio_wsum > err_wsum)
-        y3[to_error], y3[to_viol] = 1, 2
-
-    debug = pd.DataFrame({
-        "Error_flag": err_flag, "Violation_flag": vio_flag,
-        "Err_anom_count": err_count, "Viol_anom_count": vio_count,
-        "Err_weight_sum": err_wsum, "Viol_weight_sum": vio_wsum, "y3": y3,
-    })
-    
-    # Remove ambiguous cases that couldn't be resolved by count or weighted sum
-    ambiguous = debug[(debug["Error_flag"] == 1) & (debug["Violation_flag"] == 1) &
-                      (debug["Err_anom_count"] == debug["Viol_anom_count"]) &
-                      (debug["Err_weight_sum"] == debug["Viol_weight_sum"])]
-    if not ambiguous.empty:
-        print(f"  Removing {len(ambiguous)} ambiguous rows (both Error & Violation, unresolved by count/weight)")
-        debug, y3 = debug.drop(ambiguous.index), y3.drop(ambiguous.index)
-    return y3, debug
 
 
 def build_category_df(
@@ -92,14 +50,6 @@ def build_category_df(
     return out
 
 
-def balance_undersample(df: pd.DataFrame, target_col: str, seed: int) -> pd.DataFrame:
-    counts = df[target_col].value_counts()
-    if len(counts) <= 1:
-        return df.copy()
-    min_count = int(counts.min())
-    parts = [df[df[target_col] == cls].sample(n=min_count, replace=False, random_state=seed)
-             for cls in counts.index]
-    return pd.concat(parts).sample(frac=1, random_state=seed).reset_index(drop=True)
 
 
 def learn_edges(train_bn: pd.DataFrame, nodes: List[str], class_nodes: List[str],
@@ -202,10 +152,12 @@ def save_dag(edges: List[Tuple[str, str]], nodes: List[str], out_dir: str, cpds=
 # Refactored workflow function
 def run_bayesian_workflow(config_path: str = "./configs/config.yaml",
                           data_file: Optional[str] = None, out_dir: Optional[str] = None) -> None:
-    cfg = load_yaml(config_path)
+    cfg = load_project_config(config_path)
     hfacs, svm_cfg = cfg["hfacs_categories"], cfg["svm"]
-    data_file = data_file or os.path.join(svm_cfg.get("processed_dir", "data/processed"), svm_cfg.get("data_file", "step3_hfacs_categories.csv"))
-    out_dir = out_dir or svm_cfg.get("bn_output_dir", "./bn_outputs")
+    default_data_file = str(get_optional_path(cfg, "bn_input_csv", default=cfg["paths"]["processed_csv"]))
+    default_out_dir = str(get_optional_path(cfg, "bn_output_dir", default="./data/processed/bayesian"))
+    data_file = data_file or default_data_file
+    out_dir = out_dir or default_out_dir
     error_col = svm_cfg.get("error_target_col", "Error")
     viol_col = svm_cfg.get("viol_target_col", "Violation")
     error_weights = cfg.get("error_weights", svm_cfg.get("error_weights", {}))
@@ -225,7 +177,7 @@ def run_bayesian_workflow(config_path: str = "./configs/config.yaml",
         if col not in raw_df.columns:
             raw_df[col] = 0
 
-    y3, debug = make_three_class_target(raw_df, error_col, viol_col, error_weights, viol_weights, thr)
+    y3, debug = make_three_class_target(raw_df, error_col, viol_col, error_weights, viol_weights, thr=thr)
 
     df = X_cat.assign(y3=y3.astype(int))
     for index, class_name in enumerate(class_nodes):

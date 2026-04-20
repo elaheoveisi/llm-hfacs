@@ -4,10 +4,16 @@ llm:
 
 paths:
   llm_predictions_csv: './data/processed/llm_predictions.csv'
-paths:
   raw_data: './data/raw/ASRS_2015_2025_main.csv'
-  processed_csv: './data/processed/processed_output.csv'
-  processed_excel: './data/processed/processed_output.xlsx'
+  processed_csv: './data/intermediate/processed_output.csv'
+  processed_excel: './data/intermediate/processed_output.xlsx'
+  all_conditional_probabilities_csv: './data/processed/all_conditional_probabilities.csv'
+  hfacs_full_chains_csv: './data/processed/HFACS_all_L4_to_L1_chains.csv'
+  hfacs_combined_matrix_csv: './data/processed/HFACS_L4_to_L1_combined.csv'
+  learned_dag_probability_matrix_csv: './data/processed/learned_dag_probability_matrix.csv'
+  svm_output_dir: './data/processed/svm'
+  bn_output_dir: './data/processed/bayesian'
+  dag_output_dir: './data/processed'
 
 source_columns:
   Anomaly: 'Events_Anomaly'
@@ -138,9 +144,6 @@ hfacs_categories:
 
 
 svm:
-  data_file: 'step3_hfacs_categories.csv'   # relative to processed_dir
-  processed_dir: 'data/processed'
-  bn_output_dir: './bn_outputs'
   bn_prior_type: 'BDeu'
   bin_threshold: 0.0
   error_target_col: 'Error'

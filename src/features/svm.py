@@ -3,9 +3,11 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass, field
 from typing import Dict, List, Tuple, Any
+from features.utils import make_three_class_target
+from features.balancing import balance_undersample
 import numpy as np
 import pandas as pd
-from sklearn.model_selection import train_test_split, GridSearchCV
+from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
 from sklearn.svm import SVC
@@ -16,100 +18,32 @@ import yaml
 with open(os.path.join(os.path.dirname(__file__), '../../configs/config.yaml'), 'r', encoding='utf-8') as f:
     config_yaml = yaml.safe_load(f)
  
-hfacs_categories = config_yaml['hfacs_categories'] 
+hfacs_categories = config_yaml['hfacs_categories']
 svm_cfg = config_yaml['svm']
- 
+paths_cfg = config_yaml['paths']
+
 class Config:
-    data_file: str = os.path.join('data/processed', svm_cfg.get('data_file', 'step3_hfacs_categories.csv'))
-    out_dir: str = './svm_outputs'
+    data_file: str = paths_cfg['processed_csv']
+    out_dir: str = paths_cfg.get('svm_output_dir', './data/processed/svm')
     feature_categories: List[str] = svm_cfg['feature_columns']
-    # Target columns (Level 1 flags)
     target_columns: List[str] = svm_cfg['target_columns']
-    error_target_col: str = 'Error'
-    viol_target_col: str = 'Violation'
-    test_size: float = 0.20  
+    error_target_col: str = svm_cfg.get('error_target_col', 'Error')
+    viol_target_col: str = svm_cfg.get('viol_target_col', 'Violation')
+    test_size: float = svm_cfg.get('test_size', 0.20)
     seed: int = svm_cfg.get('seed', 7)
     degree_grid: Tuple[int, ...] = tuple(svm_cfg.get('degree_grid', [2, 3]))
     c_grid: Tuple[float, ...] = tuple(svm_cfg.get('c_grid', [0.01, 0.1, 1, 10, 100]))
-    tie_break: str = 'error'
- 
+    tie_break: str = svm_cfg.get('tie_break', 'error')
+
 CFG = Config()
- 
-# Weights 
-error_weights: Dict[str, float] = config_yaml.get('error_weights', {})
-viol_weights: Dict[str, float] = config_yaml.get('viol_weights', {})
+
+# Weights (defined under svm: in config)
+error_weights: Dict[str, float] = svm_cfg.get('error_weights', {})
+viol_weights: Dict[str, float] = svm_cfg.get('viol_weights', {})
 ERROR_ANOM_COLS: List[str] = list(error_weights.keys())
 VIOL_ANOM_COLS: List[str] = list(viol_weights.keys())
- 
- #target building
-def _safe_binary_df(df: pd.DataFrame, cols: List[str]) -> pd.DataFrame:
-    """Return a 0/1 dataframe for requested cols; missing cols are treated as 0."""
-    out = pd.DataFrame(index=df.index)
-    for c in cols:
-        if c in df.columns:
-            s = pd.to_numeric(df[c], errors="coerce").fillna(0)
-            out[c] = (s > 0).astype(int)
-        else:
-            out[c] = 0
-    return out
- 
- 
-def make_three_class_target(
-    df: pd.DataFrame,
-    error_col: str,
-    viol_col: str,
-    tie_break: str = "error",
-) -> Tuple[pd.Series, pd.DataFrame]:
-    """Build 3-class target: 0=neither, 1=Error, 2=Violation. 
-    Tie-breaking: 1) count, 2) weighted sum, 3) remove if unresolved."""
-    if tie_break not in {"error", "violation"}:
-        raise ValueError("tie_break must be 'error' or 'violation'")
-    if error_col not in df.columns or viol_col not in df.columns:
-        raise KeyError(f"Missing target columns: {error_col} / {viol_col}")
 
-    err_flag = (pd.to_numeric(df[error_col], errors="coerce").fillna(0) > 0).astype(int)
-    vio_flag = (pd.to_numeric(df[viol_col], errors="coerce").fillna(0) > 0).astype(int)
-    err_df, vio_df = _safe_binary_df(df, ERROR_ANOM_COLS), _safe_binary_df(df, VIOL_ANOM_COLS)
-    err_count, vio_count = err_df.sum(axis=1), vio_df.sum(axis=1)
-    err_wsum = sum(err_df[c] * w for c, w in error_weights.items()) if error_weights else pd.Series(0, index=df.index)
-    vio_wsum = sum(vio_df[c] * w for c, w in viol_weights.items()) if viol_weights else pd.Series(0, index=df.index)
 
-    y3 = pd.Series(0, index=df.index)
-    y3[(err_flag == 1) & (vio_flag == 0)] = 1
-    y3[(err_flag == 0) & (vio_flag == 1)] = 2
-
-    both = (err_flag == 1) & (vio_flag == 1)
-    if both.any():
-        # 1. Use anomaly counts
-        to_error = both & (err_count > vio_count)
-        to_viol  = both & (vio_count > err_count)
-        # 2. If counts are tied, use weighted sum
-        tie_count = both & (err_count == vio_count)
-        to_error |= tie_count & (err_wsum > vio_wsum)
-        to_viol  |= tie_count & (vio_wsum > err_wsum)
-        y3[to_error] = 1
-        y3[to_viol] = 2
-
-    debug = pd.DataFrame({
-        "Error_flag": err_flag,
-        "Violation_flag": vio_flag,
-        "Err_anom_count": err_count,
-        "Viol_anom_count": vio_count,
-        "Err_weight_sum": err_wsum,
-        "Viol_weight_sum": vio_wsum,
-        "y3": y3,
-    }, index=df.index)
-    
-    # Remove ambiguous cases that couldn't be resolved by count or weighted sum
-    ambiguous = debug[(debug["Error_flag"] == 1) & (debug["Violation_flag"] == 1) & 
-                      (debug["Err_anom_count"] == debug["Viol_anom_count"]) &
-                      (debug["Err_weight_sum"] == debug["Viol_weight_sum"])]
-    if not ambiguous.empty:
-        print(f"  Removing {len(ambiguous)} ambiguous rows (both Error & Violation, unresolved by count/weight)")
-        debug = debug.drop(ambiguous.index)
-        y3 = y3.drop(ambiguous.index)
-    return y3, debug
- 
  
 def ensure_dir(path: str) -> None:
     os.makedirs(path, exist_ok=True)
@@ -150,6 +84,8 @@ def main() -> None:
         df=df,
         error_col=CFG.error_target_col,
         viol_col=CFG.viol_target_col,
+        error_weights=error_weights,
+        viol_weights=viol_weights,
         tie_break=CFG.tie_break,
     )
 
@@ -167,17 +103,11 @@ def main() -> None:
     # Features matrix
     X = df.loc[:, feature_cols].astype(float)
 
-    # Balance the groups (simple undersampling for demonstration)
-    from sklearn.utils import resample
-    min_count = group_counts.min()
-    balanced_indices = []
-    for group in group_counts.index:
-        idx = y3[y3 == group].index
-        idx_bal = resample(idx, replace=False, n_samples=min_count, random_state=CFG.seed)
-        balanced_indices.extend(idx_bal)
-    X_bal = X.loc[balanced_indices].reset_index(drop=True)
-    y_bal = y3.loc[balanced_indices].reset_index(drop=True)
-    debug_bal = debug.loc[balanced_indices].reset_index(drop=True)
+    combined = X.assign(y3=y3).join(debug.add_prefix("dbg_"))
+    combined_bal = balance_undersample(combined, "y3", CFG.seed)
+    y_bal = combined_bal.pop("y3")
+    debug_bal = combined_bal[[c for c in combined_bal.columns if c.startswith("dbg_")]].rename(columns=lambda c: c[4:])
+    X_bal = combined_bal[feature_cols]
 
     # Split (stratify by y_bal if possible)
     stratify = y_bal if y_bal.nunique() > 1 else None
@@ -191,27 +121,10 @@ def main() -> None:
     # Model pipeline
     pipe = Pipeline([
         ("scaler", StandardScaler()),
-        ("svc", SVC(probability=False)),
+        ("svc", SVC(kernel="rbf", C=1.0, gamma="scale", probability=False)),
     ])
-    # Grid (poly only; degree only matters for poly)
-    param_grid = [
-        {"svc__kernel": ["linear"], "svc__C": list(CFG.c_grid)},
-        {"svc__kernel": ["rbf"], "svc__C": list(CFG.c_grid), "svc__gamma": ["scale", "auto"]},
-        {"svc__kernel": ["poly"], "svc__C": list(CFG.c_grid), "svc__degree": list(CFG.degree_grid), "svc__gamma": ["scale", "auto"]},
-    ]
-
-    grid = GridSearchCV(
-        estimator=pipe,
-        param_grid=param_grid,
-        scoring="f1_macro",
-        cv=5,
-        n_jobs=-1,
-        verbose=1,
-    )
-    grid.fit(X_train, y_train)
-    best_model = grid.best_estimator_
-    print("\nBest params:", grid.best_params_)
-    print("Best CV f1_macro:", grid.best_score_)
+    pipe.fit(X_train, y_train)
+    best_model = pipe
     # Test evaluation
     y_pred = best_model.predict(X_test)
     print("\nTest accuracy:", accuracy_score(y_test, y_pred))

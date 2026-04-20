@@ -1,6 +1,7 @@
 import os
 import sys
 import yaml
+import json
 import pandas as pd
 from pathlib import Path
 from tqdm import tqdm
@@ -12,9 +13,6 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 if not OPENAI_API_KEY:
     raise RuntimeError("OPENAI_API_KEY environment variable not set.")
 client = openai.OpenAI(api_key=OPENAI_API_KEY)
-
-# Optional: Uncomment if using HuggingFace Transformers
-# from transformers import pipeline
 
 PROMPT_DIR = Path(__file__).parent
 
@@ -37,6 +35,20 @@ target_columns = [
 # Choose your LLM backend here
 LLM_BACKEND = "openai"  # or "hf" for HuggingFace
 LLM_MODEL = "gpt-3.5-turbo"  # or e.g. "mistralai/Mistral-7B-Instruct-v0.2"
+
+HFACS_KEYS = [
+    "Error",
+    "Violation",
+    "Situational_Factors",
+    "Personnel_Factors",
+    "Condition_of_Operators",
+    "Inadequate_Supervision",
+    "Failed_to_Correct_Problem",
+    "Planned_Inappropriate_Operations",
+    "Supervisory_Violation",
+    "Organizational_Climate",
+    "Resource_Management/Organizational_Process",
+]
 
 
 def load_prompt(style):
@@ -69,21 +81,42 @@ def query_llm(prompt, backend=LLM_BACKEND, model=LLM_MODEL):
 
 
 def parse_llm_output(output):
-    # Parse the LLM output into a dict of predictions
-    # This function should be customized to match your output format
-    result = {}
-    final_prediction = None
-    for line in output.splitlines():
-        if ":" in line:
-            k, v = line.split(":", 1)
-            key = k.strip()
-            val = v.strip()
-            result[key] = val
-            if key.lower().startswith("final prediction"):
-                final_prediction = val
-    # Add a new column for the LLM's independent prediction
-    if final_prediction is not None:
-        result["llm_predicted_class"] = final_prediction
+    """Parse the model response into a flat dict for CSV export.
+
+    The prompts now request a JSON object with HFACS keys only. We parse that
+    JSON when possible and fall back to an error marker plus raw output.
+    """
+    raw_output = (output or "").strip()
+    result = {key: pd.NA for key in HFACS_KEYS}
+    result["parse_ok"] = 0
+    result["raw_output"] = raw_output
+
+    if not raw_output:
+        result["parse_error"] = "empty_output"
+        return result
+
+    try:
+        parsed = json.loads(raw_output)
+    except json.JSONDecodeError as exc:
+        result["parse_error"] = f"json_decode_error: {exc.msg}"
+        return result
+
+    if not isinstance(parsed, dict):
+        result["parse_error"] = "json_not_object"
+        return result
+
+    for key in HFACS_KEYS:
+        value = parsed.get(key, pd.NA)
+        if value is pd.NA:
+            result[key] = pd.NA
+            continue
+        try:
+            result[key] = int(value)
+        except (TypeError, ValueError):
+            result[key] = pd.NA
+
+    result["parse_ok"] = 1
+    result["parse_error"] = ""
     return result
 
 
@@ -92,22 +125,32 @@ def generate_llm_dataset(
     input_path,
     output_path,
     style="cot",
-    limit=None
+    limit=None,
+    backend=LLM_BACKEND,
+    model=LLM_MODEL
 ):
     prompt_template = load_prompt(style)
     df = pd.read_csv(input_path)
+    output_path = Path(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
     results = []
     for idx, row in tqdm(df.iterrows(), total=len(df)):
         if limit and idx >= limit:
             break
         prompt = fill_prompt(prompt_template, row)
         try:
-            output = query_llm(prompt)
+            output = query_llm(prompt, backend=backend, model=model)
         except Exception as e:
             print(f"[ERROR] LLM call failed for row {idx}: {e}")
             output = ""
         parsed = parse_llm_output(output)
-        results.append({"index": idx, **parsed})
+        results.append(
+            {
+                "index": idx,
+                "prompt_style": style,
+                **parsed,
+            }
+        )
     pd.DataFrame(results).to_csv(output_path, index=False)
     print(f"Saved LLM predictions to {output_path}")
 

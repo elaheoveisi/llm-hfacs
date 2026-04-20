@@ -1,5 +1,0 @@
-Nodes: 11
-Edges: 26
-Is DAG: True
-One topological order:
-Organizational_Climate -> Resource_Management/Organizational_Process -> Inadequate_Supervision -> Failed_to_Correct_Problem -> Planned_Inappropriate_Operations -> Supervisory_Violation -> Condition_of_Operators -> Personnel_Factors -> Situational_Factors -> Error -> Violation

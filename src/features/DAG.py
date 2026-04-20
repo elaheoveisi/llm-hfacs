@@ -1,17 +1,16 @@
 from __future__ import annotations
-import yaml
 import pandas as pd
 from pathlib import Path
 import networkx as nx
- 
 
 from causallearn.search.ScoreBased.GES import ges
 from visualization.dag_graph import plot_dag
+from project_config import chdir_project_root, get_optional_path, load_config
+from features.utils import make_three_class_target
 
-# --- Load config from YAML (reuse svm.py logic) ---
-import os
-with open(os.path.join(os.path.dirname(__file__), '../../configs/config.yaml'), 'r', encoding='utf-8') as f:
-    config_yaml = yaml.safe_load(f)
+
+chdir_project_root()
+config_yaml = load_config()
 
 hfacs_categories = config_yaml['hfacs_categories']
 dag_cfg = config_yaml.get('dag', {})
@@ -21,73 +20,6 @@ error_weights = config_yaml.get('error_weights', {})
 viol_weights = config_yaml.get('viol_weights', {})
 ERROR_ANOM_COLS = list(error_weights.keys())
 VIOL_ANOM_COLS = list(viol_weights.keys())
-
-def _safe_binary_df(df: pd.DataFrame, cols: list[str]) -> pd.DataFrame:
-    """Return a 0/1 dataframe for requested cols; missing cols are treated as 0."""
-    out = pd.DataFrame(index=df.index)
-    for c in cols:
-        if c in df.columns:
-            s = pd.to_numeric(df[c], errors="coerce").fillna(0)
-            out[c] = (s > 0).astype(int)
-        else:
-            out[c] = 0
-    return out
-
-def make_three_class_target(
-    df: pd.DataFrame,
-    error_col: str,
-    viol_col: str,
-    tie_break: str = "error",
-) -> tuple[pd.Series, pd.DataFrame]:
-    """Build 3-class target: 0=neither, 1=Error, 2=Violation. Tie-breaking as described."""
-    if tie_break not in {"error", "violation"}:
-        raise ValueError("tie_break must be 'error' or 'violation'")
-    if error_col not in df.columns or viol_col not in df.columns:
-        raise KeyError(f"Missing target columns: {error_col} / {viol_col}")
-
-    err_flag = (pd.to_numeric(df[error_col], errors="coerce").fillna(0) > 0).astype(int)
-    vio_flag = (pd.to_numeric(df[viol_col], errors="coerce").fillna(0) > 0).astype(int)
-    err_df, vio_df = _safe_binary_df(df, ERROR_ANOM_COLS), _safe_binary_df(df, VIOL_ANOM_COLS)
-    err_count, vio_count = err_df.sum(axis=1), vio_df.sum(axis=1)
-    err_wsum = sum(err_df[c] * w for c, w in error_weights.items())
-    vio_wsum = sum(vio_df[c] * w for c, w in viol_weights.items())
-
-    y3 = pd.Series(0, index=df.index)
-    y3[(err_flag == 1) & (vio_flag == 0)] = 1
-    y3[(err_flag == 0) & (vio_flag == 1)] = 2
-
-    both = (err_flag == 1) & (vio_flag == 1)
-    if both.any():
-        to_error = both & (err_count > vio_count)
-        to_viol  = both & (vio_count > err_count)
-        tie_count = both & (err_count == vio_count)
-        to_error |= tie_count & (err_wsum > vio_wsum)
-        to_viol  |= tie_count & (vio_wsum > err_wsum)
-        tie_weight = tie_count & (err_wsum == vio_wsum)
-        if tie_break == "error":
-            to_error |= tie_weight
-        else:
-            to_viol |= tie_weight
-        y3[to_error] = 1
-        y3[to_viol] = 2
-
-    debug = pd.DataFrame({
-        "Error_flag": err_flag,
-        "Violation_flag": vio_flag,
-        "Err_anom_count": err_count,
-        "Viol_anom_count": vio_count,
-        "Err_weight_sum": err_wsum,
-        "Viol_weight_sum": vio_wsum,
-        "y3": y3,
-    }, index=df.index)
-    return y3, debug
-
-
-
-def load_config(config_path: str = "./configs/config.yaml") -> dict:
-    with open(config_path, "r", encoding="utf-8") as f:
-        return yaml.safe_load(f)
-
 
 def load_hfacs_data(csv_path: str) -> pd.DataFrame:
     df = pd.read_csv(csv_path)
@@ -209,7 +141,7 @@ def learn_dag_ges(
 # -----------------------------
 # Export + Plot
 # -----------------------------
-def export_dag_outputs(G: nx.DiGraph, output_dir: str) -> None:
+def export_dag_outputs(G: nx.DiGraph, output_dir: str, data_path: str | None = None) -> None:
     outdir = Path(output_dir)
     outdir.mkdir(parents=True, exist_ok=True)
 
@@ -217,25 +149,20 @@ def export_dag_outputs(G: nx.DiGraph, output_dir: str) -> None:
     edges = pd.DataFrame(list(G.edges()), columns=["parent", "child"])
     edges.to_csv(outdir / "learned_dag_edges.csv", index=False)
 
-    # Compute and save raw conditional probabilities for each edge
-    # Try to find the data file in the output directory or use a default
-    data_path = outdir / "../step3_hfacs_categories.csv"
-    if not data_path.exists():
-        data_path = Path("./data/processed/step3_hfacs_categories.csv")
-    if data_path.exists():
-        df = pd.read_csv(data_path)
+    source_data_path = Path(data_path) if data_path is not None else None
+    if source_data_path is not None and source_data_path.exists():
+        df = pd.read_csv(source_data_path)
         condprobs = []
         for parent, child in G.edges():
-            # P(child=1 | parent=1)
             parent_1 = df[df[parent] == 1]
             if len(parent_1) > 0:
                 p = parent_1[child].mean()
             else:
-                p = float('nan')
+                p = float("nan")
             condprobs.append({"parent": parent, "child": child, "P(child=1|parent=1)": p})
         pd.DataFrame(condprobs).to_csv(outdir / "learned_dag_conditional_probabilities.csv", index=False)
     else:
-        print(f"[WARN] Could not find data file for conditional probabilities: {data_path}")
+        print(f"[WARN] Could not find data file for conditional probabilities: {source_data_path}")
 
     # Adjacency
     nodes = list(G.nodes())
@@ -266,13 +193,15 @@ def export_dag_outputs(G: nx.DiGraph, output_dir: str) -> None:
 
 def run_hfacs_causal_learn_ges(
     config_path: str = "./configs/config.yaml",
-    data_path: str = "./data/processed/step3_hfacs_categories.csv",
-    output_dir: str = "./data/processed",
+    data_path: str | None = None,
+    output_dir: str | None = None,
     sink_nodes: tuple[str, ...] = ("Error", "Violation"),
     max_indegree: int | None = None,
     score_func: str = "local_score_BDeu",
 ) -> None:
     config = load_config(config_path)
+    data_path = data_path or str(get_optional_path(config, "dag_input_csv", default=config["paths"]["processed_csv"]))
+    output_dir = output_dir or str(get_optional_path(config, "dag_output_dir", default="./data/processed"))
     df = load_hfacs_data(data_path)
     categories = get_category_columns(config)
 
@@ -282,7 +211,7 @@ def run_hfacs_causal_learn_ges(
     viol_col = config.get('svm', {}).get('viol_target_col', 'Violation')
     tie_break = config.get('svm', {}).get('tie_break', 'error')
     # Add y3 and debug columns to df
-    y3, debug = make_three_class_target(df, error_col, viol_col, tie_break)
+    y3, debug = make_three_class_target(df, error_col, viol_col, error_weights, viol_weights, tie_break)
     df['y3'] = y3
     # Use only rows with y3 > 0 (Error or Violation) for DAG learning
     df = df[df['y3'] > 0].copy()
@@ -296,7 +225,7 @@ def run_hfacs_causal_learn_ges(
         score_func=score_func,
     )
 
-    export_dag_outputs(G, output_dir)
+    export_dag_outputs(G, output_dir, data_path=data_path)
     plot_dag(G, save_path=str(Path(output_dir) / "learned_dag.pdf"))
 
     score = record.get("score", None)

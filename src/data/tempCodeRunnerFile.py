@@ -1,6 +1,5 @@
 from pathlib import Path
-import os
-import yaml
+
 import pandas as pd
 
 
@@ -50,11 +49,3 @@ def build_processed_dataset(config):
     Path(excel_path).parent.mkdir(parents=True, exist_ok=True)
     df.to_excel(excel_path, index=False)
     return df
-
-
-if __name__ == "__main__":
-    config_path = Path(os.path.dirname(__file__)) / "../../configs/config.yaml"
-    with open(config_path, "r", encoding="utf-8") as f:
-        config = yaml.safe_load(f)
-    df = build_processed_dataset(config)
-    print(f"Done. Shape: {df.shape}")

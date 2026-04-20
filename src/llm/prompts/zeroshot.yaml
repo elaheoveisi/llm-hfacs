@@ -1,0 +1,30 @@
+prompt_template: |
+  You are an aviation safety analyst using the HFACS framework.
+  Read the report text and decide whether each top-level HFACS category is present.
+  Use only the information provided in the report fields.
+  Base your decision on explicit evidence or strong direct support in the text.
+  If evidence for a category is missing, unclear, or only weakly implied, return 0 for that category.
+
+  Return ONLY a JSON object whose keys are exactly:
+  "Error", "Violation", "Situational_Factors", "Personnel_Factors",
+  "Condition_of_Operators", "Inadequate_Supervision", "Failed_to_Correct_Problem",
+  "Planned_Inappropriate_Operations", "Supervisory_Violation",
+  "Organizational_Climate", "Resource_Management/Organizational_Process".
+  For each key, return:
+  - 1 if the category is supported by the report evidence
+  - 0 if the category is not supported by the report evidence
+
+  Report 1 Narrative:
+  [Report 1_Narrative]
+
+  Report 2 Narrative:
+  [Report 2_Narrative]
+
+  Report 1 Callback:
+  [Report 1_Callback]
+
+  Report 2 Callback:
+  [Report 2_Callback]
+
+  Report 1 Synopsis:
+  [Report 1_Synopsis]
