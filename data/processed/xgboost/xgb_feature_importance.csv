@@ -1,0 +1,49 @@
+,importance
+Anomaly_Ground Excursion Runway,0.09073104
+Contributing_Human Factors,0.08140436
+Contributing_Chart Or Publication,0.06665356
+Contributing_Company Policy,0.047150377
+Contributing_Logbook Entry,0.04467114
+HumanFactors_Communication Breakdown,0.040026274
+Contributing_Weather,0.039216194
+Contributing_Procedure,0.03411576
+Contributing_Software and Automation,0.03207072
+Anomaly_Inflight Event / Encounter Bird / Animal,0.026966259
+Anomaly_Inflight Event / Encounter Weather / Turbulence,0.02572613
+Contributing_Airport,0.020767929
+HumanFactors_Training / Qualification,0.020234987
+Anomaly_Aircraft Equipment Problem Critical,0.019857895
+Contributing_Incorrect / Not Installed / Unavailable Part,0.018899094
+HumanFactors_Troubleshooting,0.018664958
+HumanFactors_Workload,0.016994275
+HumanFactors_Other / Unknown,0.015487789
+HumanFactors_Human-Machine Interface,0.015094988
+Anomaly_Aircraft Equipment Problem Less Severe,0.01484277
+Anomaly_Ground Event / Encounter Ground Equipment Issue,0.01477921
+Anomaly_Inflight Event / Encounter Object,0.014271587
+Contributing_Equipment / Tooling,0.013935221
+HumanFactors_Time Pressure,0.013687938
+Anomaly_Ground Event / Encounter FOD,0.01358955
+HumanFactors_Distraction,0.013360275
+HumanFactors_Situational Awareness,0.013282752
+Anomaly_Ground Incursion Runway,0.013033439
+Contributing_Aircraft,0.012988623
+Contributing_Environment - Non Weather Related,0.012696854
+Anomaly_Ground Event / Encounter Object,0.012449114
+Contributing_Staffing,0.012006334
+Anomaly_Ground Event / Encounter Weather / Turbulence,0.011806776
+Contributing_Airspace Structure,0.011719628
+Anomaly_ATC Issue All Types,0.011687855
+HumanFactors_Confusion,0.011666481
+HumanFactors_Fatigue,0.011408954
+Contributing_Manuals,0.0113637755
+Anomaly_Ground Excursion Taxiway,0.010839646
+Anomaly_Inflight Event / Encounter Wake Vortex Encounter,0.010821925
+Anomaly_Ground Event / Encounter Person / Animal / Bird,0.010466805
+Anomaly_Ground Incursion Taxiway,0.010035974
+HumanFactors_Physiological - Other,0.009531201
+Contributing_MEL,0.0091187125
+Anomaly_Ground Excursion Ramp,0.007974665
+Anomaly_Ground Event / Encounter Jet Blast,0.0064716255
+Anomaly_Ground Incursion Ramp,0.0054285824
+Contributing_ATC Equipment / Nav Facility / Buildings,0.0

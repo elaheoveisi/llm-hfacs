@@ -116,23 +116,7 @@ def plot_dag(
 		connectionstyle='arc3,rad=0.2',
 	)
 
-	# Draw edge labels for conditional probabilities if available
-	if condprobs is not None:
-		edge_labels = {}
-		for u, v in G.edges():
-			p = condprob_dict.get((u, v), None)
-			if p is not None and not pd.isna(p):
-				edge_labels[(u, v)] = f"{p:.2f}"
-		nx.draw_networkx_edge_labels(
-			G,
-			pos,
-			edge_labels=edge_labels,
-			font_color='blue',
-			font_size=14,
-			label_pos=0.5  # Place labels at the midpoint of the edge
-		)
-
-	# Draw only rectangles with category names (no networkx node shapes)
+# Draw only rectangles with category names (no networkx node shapes)
 	for node, (x, y) in pos.items():
 		label = prettify_label(node)
 		idx = list(G.nodes).index(node)

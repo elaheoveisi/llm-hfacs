@@ -1,0 +1,49 @@
+,importance
+Anomaly_Ground Excursion Runway,0.15295827078432953
+Contributing_Human Factors,0.12631176845553113
+Contributing_Procedure,0.09403829404608734
+HumanFactors_Communication Breakdown,0.08421418354243483
+Contributing_Weather,0.06541793468475855
+Contributing_Company Policy,0.04478802886284233
+Contributing_Chart Or Publication,0.04157093226313559
+Anomaly_Aircraft Equipment Problem Critical,0.033764147753113205
+HumanFactors_Training / Qualification,0.031690629476205795
+Contributing_Logbook Entry,0.030272499331123404
+HumanFactors_Troubleshooting,0.02644567221681899
+Contributing_Aircraft,0.020078373826905204
+Anomaly_Inflight Event / Encounter Weather / Turbulence,0.019488777498872557
+Anomaly_Aircraft Equipment Problem Less Severe,0.018067742330867123
+Contributing_Environment - Non Weather Related,0.017697765087287487
+HumanFactors_Situational Awareness,0.017111222615598044
+Contributing_Software and Automation,0.016886290020069483
+Anomaly_Inflight Event / Encounter Bird / Animal,0.016811721984560626
+HumanFactors_Time Pressure,0.014762489759598629
+HumanFactors_Human-Machine Interface,0.014619635748923158
+HumanFactors_Distraction,0.013449757826697328
+Anomaly_Ground Event / Encounter Object,0.013364981638592777
+HumanFactors_Confusion,0.013147890653507499
+Contributing_Airport,0.011866493644825692
+HumanFactors_Workload,0.011589907198138088
+Contributing_Equipment / Tooling,0.007401572393721793
+HumanFactors_Other / Unknown,0.0062846927800379
+Anomaly_Inflight Event / Encounter Object,0.005577869984585766
+Anomaly_Ground Excursion Taxiway,0.005554835045242045
+Contributing_Manuals,0.004782254730181336
+Anomaly_Ground Event / Encounter Ground Equipment Issue,0.004400189067901163
+Contributing_Incorrect / Not Installed / Unavailable Part,0.0022885693746828905
+Anomaly_ATC Issue All Types,0.0020351734464025884
+Contributing_Airspace Structure,0.0019434036438501002
+Contributing_Staffing,0.0017828779054361915
+Anomaly_Ground Event / Encounter Person / Animal / Bird,0.0013646287839419752
+Anomaly_Inflight Event / Encounter Wake Vortex Encounter,0.0013390028272146045
+Anomaly_Ground Event / Encounter FOD,0.0011893577663009594
+HumanFactors_Fatigue,0.0010236722216396953
+Contributing_MEL,0.000759907981266319
+Anomaly_Ground Event / Encounter Weather / Turbulence,0.0006718730885391407
+Anomaly_Ground Incursion Taxiway,0.0004913176706333235
+HumanFactors_Physiological - Other,0.0004581386339725417
+Anomaly_Ground Event / Encounter Jet Blast,0.00013023732222854217
+Anomaly_Ground Incursion Runway,9.622983042308836e-05
+Anomaly_Ground Incursion Ramp,7.3924850598948e-06
+Anomaly_Ground Excursion Ramp,1.391765913883039e-06
+Contributing_ATC Equipment / Nav Facility / Buildings,0.0

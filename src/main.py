@@ -44,12 +44,24 @@ all_conditional_probabilities_path = get_optional_path(
     default=str(processed_dir / "all_conditional_probabilities.csv"),
 )
 svm_output_dir = get_optional_path(config, "svm_output_dir", default="./data/processed/svm")
+decision_tree_output_dir = get_optional_path(config, "decision_tree_output_dir", default="./data/processed/decision_tree")
 learned_dag_probability_matrix_path = get_optional_path(
     config,
     "learned_dag_probability_matrix_csv",
     default=str(processed_dir / "learned_dag_probability_matrix.csv"),
 )
 
+
+
+def save_decision_tree_results(y_test, y_pred, out_dir: Path):
+    os.makedirs(out_dir, exist_ok=True)
+    cm = confusion_matrix(y_test, y_pred)
+    cm_df = pd.DataFrame(cm, columns=["Pred_Neither", "Pred_Error", "Pred_Violation"],
+                        index=["True_Neither", "True_Error", "True_Violation"])
+    cm_df.to_csv(out_dir / "dt_confusion_matrix.csv")
+    report = classification_report(y_test, y_pred, digits=4, output_dict=True)
+    report_df = pd.DataFrame(report).transpose()
+    report_df.to_csv(out_dir / "dt_classification_report.csv")
 
 
 def save_svm_results(y_test, y_pred, out_dir: Path):
@@ -196,12 +208,15 @@ if __name__ == "__main__":
         with check():
             from features import svm
             print("[INFO] Running SVM prediction...")
-            svm.main()
-            # Try to save SVM results if y_test and y_pred are available from svm module
-            if hasattr(svm, "y_test") and hasattr(svm, "y_pred"):
-                save_svm_results(svm.y_test, svm.y_pred, svm_output_dir)
-            else:
-                print("[WARN] y_test and y_pred not found in svm module; results not saved.")
+            y_test, y_pred = svm.main()
+            save_svm_results(y_test, y_pred, svm_output_dir)
+
+    with skip_run("skip", "decision_tree") as check:
+        with check():
+            from features import decision_tree as dt_module
+            print("[INFO] Running Decision Tree prediction...")
+            y_test, y_pred = dt_module.main()
+            save_decision_tree_results(y_test, y_pred, decision_tree_output_dir)
 
     with skip_run("skip", "save_dag_probability_matrix") as check:
         with check():

@@ -18,7 +18,7 @@ except Exception:
     from pgmpy.models import BayesianNetwork  # type: ignore
 from pgmpy.inference import VariableElimination
 from project_config import chdir_project_root, get_optional_path, load_config as load_project_config
-from features.utils import make_three_class_target
+from features.utils import make_three_class_target_from_config
 from features.balancing import balance_undersample
 
 
@@ -160,8 +160,8 @@ def run_bayesian_workflow(config_path: str = "./configs/config.yaml",
     out_dir = out_dir or default_out_dir
     error_col = svm_cfg.get("error_target_col", "Error")
     viol_col = svm_cfg.get("viol_target_col", "Violation")
-    error_weights = cfg.get("error_weights", svm_cfg.get("error_weights", {}))
-    viol_weights = cfg.get("viol_weights", svm_cfg.get("viol_weights", {}))
+    error_weights = hfacs.get("Error", {})
+    viol_weights = hfacs.get("Violation", {})
     category_nodes = svm_cfg["feature_columns"]
     class_nodes = svm_cfg.get("class_nodes", ["Neither", "Error", "Violation"])
     seed = int(svm_cfg.get("seed", 7))
@@ -177,7 +177,7 @@ def run_bayesian_workflow(config_path: str = "./configs/config.yaml",
         if col not in raw_df.columns:
             raw_df[col] = 0
 
-    y3, debug = make_three_class_target(raw_df, error_col, viol_col, error_weights, viol_weights, thr=thr)
+    y3, debug = make_three_class_target_from_config(raw_df, cfg)
 
     df = X_cat.assign(y3=y3.astype(int))
     for index, class_name in enumerate(class_nodes):
