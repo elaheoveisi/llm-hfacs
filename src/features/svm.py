@@ -2,8 +2,16 @@ from __future__ import annotations
 import os
 import sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+
 from features.balancing import balance_features_labels
-from features.utils import make_three_class_target_from_config
+from features.utils import (
+    ensure_dir,
+    load_config,
+    load_dataset,
+    get_hfacs_feature_cols,
+    filter_tied_rows,
+    make_three_class_target_from_config,
+)
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
@@ -11,68 +19,53 @@ from sklearn.pipeline import Pipeline
 from sklearn.svm import SVC
 from sklearn.metrics import classification_report, confusion_matrix, accuracy_score
 
-import yaml
-with open(os.path.join(os.path.dirname(__file__), '../../configs/config.yaml'), 'r', encoding='utf-8') as f:
-    config_yaml = yaml.safe_load(f)
-
-def ensure_dir(path: str) -> None:
-    os.makedirs(path, exist_ok=True)
-
 
 def main() -> None:
+    config_yaml = load_config()
 
-    out_dir = config_yaml['paths'].get('svm_output_dir', './data/processed/svm')
+    out_dir = config_yaml['paths']['svm_output_dir']
     ensure_dir(out_dir)
 
-    dataset_key = config_yaml['svm'].get('dataset_key', 'processed_csv')
-    df = pd.read_csv(config_yaml['paths'][dataset_key])
-
-    _targets = {'Error', 'Violation'}
-    feature_cols = [
-        col
-        for cat, subcats in config_yaml['hfacs_categories'].items()
-        if cat not in _targets
-        for col in subcats
-    ]
+    df = load_dataset(config_yaml)
+    feature_cols = [c for c in get_hfacs_feature_cols(config_yaml) if c in df.columns]
 
     y3, _ = make_three_class_target_from_config(df, config_yaml)
 
-    # Count each group after scoring and grouping
-    group_counts = y3.value_counts().sort_index()
-    print("\nClass distribution after scoring and grouping:")
-    for group, count in group_counts.items():
-        label = {0: "Neither", 1: "Error", 2: "Violation"}.get(group, str(group))
-        print(f"  {label} ({group}): {count}")
+    df, y3 = filter_tied_rows(df, y3)
 
-    # Features matrix
-    X = df.loc[:, feature_cols].astype(float)
+
+    X = df.loc[:, feature_cols].astype(float) 
+    """selects only the feature columns from df 
+    (dropping everything else like target columns),
+    then casts all values to float"""
 
     X_bal, y_bal = balance_features_labels(X, y3)
 
-    # Split (stratify by y_bal if possible)
+    print("\nClass distribution after balancing:")
+    for cls, count in y_bal.value_counts().sort_index().items():
+        print(f"  Class {cls}: {count} cases")
+
     stratify = y_bal if y_bal.nunique() > 1 else None
     X_train, X_test, y_train, y_test = train_test_split(
         X_bal, y_bal,
-        test_size=0.20,
-        random_state=7,
+        test_size=0.15,
+        random_state=42,
         stratify=stratify,
     )
 
-    # Model pipeline with fixed RBF kernel SVM
-    best_model = Pipeline([
+    pipeline = Pipeline([
         ("scaler", StandardScaler()),
-        ("svc", SVC(kernel="rbf", C=2.3, gamma="scale", probability=False)),
+        ("svc", SVC(C=2.3, kernel="linear", gamma="scale", probability=False)),
     ])
-    best_model.fit(X_train, y_train)
 
-    # Test evaluation
-    y_pred = best_model.predict(X_test)
+    pipeline.fit(X_train, y_train)
+
+    y_pred = pipeline.predict(X_test)
     print("\nTest accuracy:", accuracy_score(y_test, y_pred))
     print("\nConfusion matrix (rows=true, cols=pred):\n", confusion_matrix(y_test, y_pred))
     print("\nClassification report (0=Neither, 1=Error, 2=Violation):\n")
     print(classification_report(y_test, y_pred, digits=4))
 
-    # Expose y_test and y_pred as module-level variables for main.py
     module = sys.modules[__name__]
     module.y_test = y_test
     module.y_pred = y_pred

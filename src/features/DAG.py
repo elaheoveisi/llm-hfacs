@@ -152,7 +152,7 @@ def run_hfacs_causal_learn_ges(
 
     df = load_hfacs_data(data_path)
     y3, _ = make_three_class_target_from_config(df, config_yaml)
-    df = df[y3 > 0].copy()
+    df = df[(y3 > 0) & (y3 != -1)].copy()
 
     G, record = learn_dag_ges(df)
     export_dag_outputs(G, output_dir, data_path=data_path)
@@ -198,6 +198,9 @@ def run_dag_evaluation(
 
     df = load_hfacs_data(data_path)
     y3, _ = make_three_class_target_from_config(df, config_yaml)
+    mask = y3 != -1
+    df = df.loc[mask].copy()
+    y3 = y3.loc[mask]
 
     G, _ = learn_dag_ges(df)
 

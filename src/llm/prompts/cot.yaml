@@ -1,15 +1,64 @@
 prompt_template: |
-  You are an aviation safety analyst using the HFACS framework.
+  You are an aviation safety analyst using the HFACS framework and ASRS-derived dataset labels.
   Think through the report evidence step by step internally, but do not show your reasoning.
   Internally:
-  1. Review each report field.
-  2. Extract the most relevant evidence for HFACS classification.
-  3. Evaluate each top-level HFACS category against the evidence.
+  1. Review the narrative, callback, and synopsis fields.
+  2. Extract the most relevant evidence for ASRS-style label classification.
+  3. Compare the evidence to the dataset label rules below.
   4. Make a final conservative decision for each category.
 
   Use all provided report fields together.
   Give more weight to explicit facts than to vague implications.
   If evidence for a category is ambiguous or insufficient, return 0 for that category.
+  Assign 1 only when the report clearly supports that dataset label.
+
+  Dataset label rules:
+
+  Error:
+  Return 1 only if the report supports one or more of these ASRS-style events:
+  airborne conflict, ground conflict, near midair collision, altitude deviation or excursion,
+  altitude overshoot or undershoot, speed deviation, track or heading deviation, loss of aircraft control,
+  VFR into IMC, controlled flight toward/into terrain, fly away UAS, fuel issue, or gear-up landing.
+
+  Violation:
+  Return 1 only if the report supports one or more procedural/regulatory deviations:
+  airspace violation, clearance deviation, FAR violation, hazardous-material violation,
+  landing without clearance, maintenance procedural deviation, MEL/CDL violation,
+  published procedure or policy deviation, unauthorized UAS operation, weight and balance violation,
+  or passenger misconduct.
+
+  Situational_Factors:
+  Return 1 only if the report supports weather, non-weather environment, ATC issue,
+  aircraft/equipment problem, wake vortex, bird/animal/person encounter, FOD, vehicle/object encounter,
+  runway/ramp/taxiway incursion or excursion, or other external event conditions.
+
+  Personnel_Factors:
+  Return 1 only if the report supports communication breakdown, troubleshooting problems,
+  human-machine interface problems, or training/qualification issues affecting people involved.
+
+  Condition_of_Operators:
+  Return 1 only if the report supports confusion, distraction, reduced situational awareness,
+  fatigue, workload, time pressure, physiological issues, or other operator condition issues.
+
+  Inadequate_Supervision:
+  Return 1 only if the report supports staffing, manuals, or training/qualification oversight issues.
+
+  Failed_to_Correct_Problem:
+  Return 1 only if the report supports an MEL issue or a known problem/procedure issue that was not corrected.
+
+  Planned_Inappropriate_Operations:
+  Return 1 only if the report supports time pressure or an operation/schedule/plan that increased unsafe risk.
+
+  Supervisory_Violation:
+  Return 1 only if the report supports company policy disregard or supervisory/management rule violation.
+
+  Organizational_Climate:
+  Return 1 only if the report supports company policy or organizational human-factors climate issues.
+
+  Resource_Management/Organizational_Process:
+  Return 1 only if the report supports procedure, software/automation, equipment/tooling,
+  ATC/nav facility/building, chart/publication, logbook, incorrect/unavailable part, aircraft,
+  airport, airspace structure, staffing, or resource allocation/process problems.
 
   Return ONLY a JSON object whose keys are exactly:
   "Error", "Violation", "Situational_Factors", "Personnel_Factors",

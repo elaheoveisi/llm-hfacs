@@ -1,20 +1,12 @@
 import os
-import sys
 import yaml
 import json
 import pandas as pd
 from pathlib import Path
 from tqdm import tqdm
 
-import openai
-
-# Use environment variable for API key (do NOT hardcode keys)
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-if not OPENAI_API_KEY:
-    raise RuntimeError("OPENAI_API_KEY environment variable not set.")
-client = openai.OpenAI(api_key=OPENAI_API_KEY)
-
-PROMPT_DIR = Path(__file__).parent
+WORKSPACE_ROOT = Path(__file__).resolve().parents[3]
+PROMPT_DIR = Path(__file__).resolve().parents[1] / "prompts"
 
 
 PROMPT_FILES = {
@@ -50,6 +42,12 @@ HFACS_KEYS = [
     "Resource_Management/Organizational_Process",
 ]
 
+LABEL_SOURCE_ALIASES = {
+    "Resource_Management/Organizational_Process": "Organizational_Process",
+}
+
+client = None
+
 
 def load_prompt(style):
     with open(PROMPT_FILES[style], "r", encoding="utf-8") as f:
@@ -58,16 +56,23 @@ def load_prompt(style):
 
 
 def fill_prompt(template, row):
-    # Replace placeholders with actual row values
-    return template.replace("[Report 1_Narrative]", str(row["Report 1_Narrative"])) \
-        .replace("[Report 2_Narrative]", str(row["Report 2_Narrative"])) \
-        .replace("[Report 1_Callback]", str(row["Report 1_Callback"])) \
-        .replace("[Report 2_Callback]", str(row["Report 2_Callback"])) \
-        .replace("[Report 1_Synopsis]", str(row["Report 1_Synopsis"]))
+    prompt = template
+    for column in target_columns:
+        value = row[column] if column in row.index and pd.notna(row[column]) else ""
+        prompt = prompt.replace(f"[{column}]", str(value))
+    return prompt
 
 
 def query_llm(prompt, backend=LLM_BACKEND, model=LLM_MODEL):
     if backend == "openai":
+        global client
+        if client is None:
+            import openai
+
+            openai_api_key = os.getenv("OPENAI_API_KEY")
+            if not openai_api_key:
+                raise RuntimeError("OPENAI_API_KEY environment variable not set.")
+            client = openai.OpenAI(api_key=openai_api_key)
         response = client.chat.completions.create(
             model=model,
             messages=[{"role": "user", "content": prompt}],
@@ -120,6 +125,36 @@ def parse_llm_output(output):
     return result
 
 
+def evaluate_predictions(input_df, predictions_df):
+    """Compute per-label accuracy for labels that exist in the source data."""
+    rows = []
+    valid_predictions = predictions_df[predictions_df["parse_ok"] == 1]
+    if valid_predictions.empty:
+        return pd.DataFrame(rows)
+
+    for key in HFACS_KEYS:
+        source_key = key if key in input_df.columns else LABEL_SOURCE_ALIASES.get(key)
+        if source_key not in input_df.columns or key not in valid_predictions.columns:
+            continue
+        aligned_true = input_df.loc[valid_predictions["index"], source_key]
+        y_true = pd.to_numeric(aligned_true, errors="coerce")
+        y_pred = pd.to_numeric(valid_predictions[key], errors="coerce")
+        mask = y_true.notna() & y_pred.notna()
+        if not mask.any():
+            continue
+        rows.append(
+            {
+                "label": key,
+                "n": int(mask.sum()),
+                "accuracy": float((y_true[mask].astype(int).to_numpy() == y_pred[mask].astype(int).to_numpy()).mean()),
+                "positive_rate_true": float(y_true[mask].astype(int).mean()),
+                "positive_rate_pred": float(y_pred[mask].astype(int).mean()),
+            }
+        )
+
+    return pd.DataFrame(rows)
+
+
 
 def generate_llm_dataset(
     input_path,
@@ -151,8 +186,18 @@ def generate_llm_dataset(
                 **parsed,
             }
         )
-    pd.DataFrame(results).to_csv(output_path, index=False)
+    predictions_df = pd.DataFrame(results)
+    predictions_df.to_csv(output_path, index=False)
     print(f"Saved LLM predictions to {output_path}")
+
+    metrics_df = evaluate_predictions(df, predictions_df)
+    if not metrics_df.empty:
+        metrics_path = output_path.with_name(f"{output_path.stem}_metrics.csv")
+        metrics_df.to_csv(metrics_path, index=False)
+        print(f"Saved LLM metrics to {metrics_path}")
+        print(metrics_df.to_string(index=False))
+    else:
+        print("[WARN] No overlapping parsed prediction/source label columns available for metrics.")
 
 
 if __name__ == "__main__":
@@ -164,7 +209,6 @@ if __name__ == "__main__":
     parser.add_argument("--limit", type=int, default=None, help="Limit number of rows (for testing)")
     args = parser.parse_args()
     # Default to old paths if not provided
-    WORKSPACE_ROOT = PROMPT_DIR.parent.parent
     input_path = Path(args.input) if args.input else (WORKSPACE_ROOT / "data" / "processed" / "processed_output.csv")
     output_path = Path(args.output) if args.output else (WORKSPACE_ROOT / "data" / "processed" / "llm_predictions.csv")
     generate_llm_dataset(

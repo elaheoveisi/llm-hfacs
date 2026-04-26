@@ -17,7 +17,5 @@ def balance_undersample(df: pd.DataFrame, target_col: str, seed: int) -> pd.Data
 def balance_features_labels(
     X: pd.DataFrame, y: pd.Series, seed: int = 7
 ) -> Tuple[pd.DataFrame, pd.Series]:
-    combined = X.assign(_y=y)
-    combined_bal = balance_undersample(combined, "_y", seed)
-    y_bal = combined_bal.pop("_y")
-    return combined_bal, y_bal
+    combined = balance_undersample(X.assign(_y=y), "_y", seed)
+    return combined.drop(columns="_y"), combined["_y"]

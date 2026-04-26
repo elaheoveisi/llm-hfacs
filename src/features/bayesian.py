@@ -179,6 +179,14 @@ def run_bayesian_workflow(config_path: str = "./configs/config.yaml",
 
     y3, debug = make_three_class_target_from_config(raw_df, cfg)
 
+    dropped = (y3 == -1).sum()
+    if dropped:
+        print(f"\nDropped full-tie rows: {dropped}")
+        mask = y3 != -1
+        raw_df = raw_df.loc[mask].copy()
+        X_cat = X_cat.loc[mask].copy()
+        y3 = y3.loc[mask]
+
     df = X_cat.assign(y3=y3.astype(int))
     for index, class_name in enumerate(class_nodes):
         df[class_name] = (df["y3"] == index).astype(int)
