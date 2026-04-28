@@ -63,6 +63,8 @@ hfacs_categories:
     - Anomaly_Ground Event / Encounter Person / Animal / Bird
     - Anomaly_Ground Event / Encounter Other / Unknown
     - Anomaly_Inflight Event / Encounter Other / Unknown
+    - Anomaly_Flight Deck / Cabin / Aircraft Event Passenger Electronic Device
+    - Anomaly_Flight Deck / Cabin / Aircraft Event Smoke / Fire / Fumes / Odor
   
   Personnel_Factors:
     - HumanFactors_Communication Breakdown
@@ -142,7 +144,7 @@ hfacs_categories:
     'Anomaly_Deviation / Discrepancy - Procedural Unauthorized Flight Operations (UAS)': 5
     'Anomaly_Deviation / Discrepancy - Procedural Weight And Balance': 4
     'Anomaly_Flight Deck / Cabin / Aircraft Event Passenger Misconduct': 2
-
+    
 dag:
   sink_nodes: ['Error', 'Violation']
   score_func: 'local_score_BDeu'

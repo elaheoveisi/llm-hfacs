@@ -34,24 +34,25 @@ def main() -> None:
     df, y3 = filter_tied_rows(df, y3)
 
 
-    X = df.loc[:, feature_cols].astype(float) 
-    """selects only the feature columns from df 
-    (dropping everything else like target columns),
-    then casts all values to float"""
+    X = df.loc[:, feature_cols].astype(float)
 
-    X_bal, y_bal = balance_features_labels(X, y3)
-
-    print("\nClass distribution after balancing:")
-    for cls, count in y_bal.value_counts().sort_index().items():
-        print(f"  Class {cls}: {count} cases")
-
-    stratify = y_bal if y_bal.nunique() > 1 else None
+    stratify = y3 if y3.nunique() > 1 else None
     X_train, X_test, y_train, y_test = train_test_split(
-        X_bal, y_bal,
+        X, y3,
         test_size=0.15,
         random_state=42,
         stratify=stratify,
     )
+
+    print("\nClass distribution before balancing (train only):")
+    for cls, count in y_train.value_counts().sort_index().items():
+        print(f"  Class {cls}: {count} cases")
+
+    X_train, y_train = balance_features_labels(X_train, y_train)
+
+    print("\nClass distribution after balancing (train only):")
+    for cls, count in y_train.value_counts().sort_index().items():
+        print(f"  Class {cls}: {count} cases")
 
     pipeline = Pipeline([
         ("scaler", StandardScaler()),
