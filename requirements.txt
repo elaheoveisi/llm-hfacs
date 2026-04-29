@@ -14,3 +14,4 @@ polars
 scikit-learn
 PyYAML
 xgboost
+matplotlib
