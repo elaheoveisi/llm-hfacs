@@ -30,7 +30,7 @@ def svm():
     feature_cols = [c for c in get_hfacs_feature_cols(config) if c in df.columns]
  
     #y3 is the target label for each row 
-    y3, _ = make_three_class_target_from_config(df, config)
+    y3 = make_three_class_target_from_config(df, config)
  
     df, y3 = filter_tied_rows(df, y3)
  

@@ -51,7 +51,7 @@ def make_three_class_target(
     df: pd.DataFrame,
     error_weights: Dict[str, float],
     viol_weights: Dict[str, float],
-) -> Tuple[pd.Series, pd.DataFrame]:
+) -> pd.Series:
     """Build 3-class target: 0=Neither, 1=Error, 2=Violation, -1=drop (full tie).
 
     Rules:
@@ -70,12 +70,6 @@ def make_three_class_target(
             return pd.DataFrame(0, index=df.index, columns=cols[:1] or ["_empty"])
         return df[present].apply(pd.to_numeric, errors="coerce").fillna(0)
 
-    def _flag(cols):
-        return (_numeric(cols) > 0).any(axis=1).astype(int)
-
-    def _count(cols):
-        return (_numeric(cols) > 0).sum(axis=1)
-
     def _wsum(cols_weights):
         total = pd.Series(0.0, index=df.index)
         for c, w in cols_weights.items():
@@ -83,10 +77,13 @@ def make_three_class_target(
                 total += (pd.to_numeric(df[c], errors="coerce").fillna(0) > 0).astype(float) * w
         return total
 
-    err_flag = _flag(list(error_weights))
-    vio_flag = _flag(list(viol_weights))
-    err_count = _count(list(error_weights))
-    vio_count = _count(list(viol_weights))
+    err_active = _numeric(list(error_weights)) > 0
+    vio_active = _numeric(list(viol_weights)) > 0
+
+    err_flag = err_active.any(axis=1).astype(int)
+    vio_flag = vio_active.any(axis=1).astype(int)
+    err_count = err_active.sum(axis=1)
+    vio_count = vio_active.sum(axis=1)
     err_wsum = _wsum(error_weights)
     vio_wsum = _wsum(viol_weights)
 
@@ -106,47 +103,14 @@ def make_three_class_target(
     y3[remaining & (err_wsum > vio_wsum)] = 1
     y3[remaining & (err_wsum == vio_wsum)] = -1  # full tie → drop
 
-    debug = pd.DataFrame({
-        "Error_flag": err_flag,
-        "Violation_flag": vio_flag,
-        "Err_count": err_count,
-        "Viol_count": vio_count,
-        "Err_wsum": err_wsum,
-        "Viol_wsum": vio_wsum,
-        "y3": y3,
-    }, index=df.index)
-
-    return y3, debug
+    return y3
 
 
 def make_three_class_target_from_config(
     df: pd.DataFrame,
     config: dict,
-) -> Tuple[pd.Series, pd.DataFrame]:
+) -> pd.Series:
     error_weights = config["hfacs_categories"]["Error"]
     viol_weights = config["hfacs_categories"]["Violation"]
     return make_three_class_target(df, error_weights, viol_weights)
 
-
-def expand_feature_columns(
-    feature_categories: List[str],
-    hfacs_categories: Dict[str, List[str]],
-    allow_duplicates: bool = False,
-) -> List[str]:
-    feature_cols: List[str] = []
-    seen: set = set()
-    for cat in feature_categories:
-        for col in hfacs_categories.get(cat, []):
-            if allow_duplicates or col not in seen:
-                feature_cols.append(col)
-            seen.add(col)
-    return feature_cols
-
-
-def coerce_numeric_features(df: pd.DataFrame, cols: Tuple[str, ...]) -> pd.DataFrame:
-    out = df.copy()
-    for c in cols:
-        if c not in out.columns:
-            raise KeyError(f"Missing feature column: {c}")
-        out[c] = pd.to_numeric(out[c], errors="coerce")
-    return out
