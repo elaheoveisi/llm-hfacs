@@ -1,0 +1,83 @@
+model: "gpt-4o-mini"
+temperature: 0
+
+system_prompt: |
+  You are an HFACS aviation safety coding assistant.
+  You must classify accident narratives using only evidence explicitly stated in the narrative.
+  Do not guess.
+  Return only valid JSON.
+
+user_prompt_template: |
+  Read the accident narrative and classify only these HFACS codes:
+
+  AE100 = Performance / Skill-Based Error
+  AE200 = Judgment / Decision-Making Error
+  AD000 = Unknown Deviation
+
+  Assumption:
+  Unsafe Act (Q1) is already confirmed as Yes for this dataset.
+  Do not evaluate Q1.
+
+  Important rules:
+  1. Use only evidence from the narrative.
+  2. Do not guess.
+  3. Final answers must be only "Yes" or "No".
+  4. Answer only Q2, Q3, and Q4.
+  5. More than one code can be selected if clearly supported.
+  6. Keep explanations short and evidence-based.
+
+  Q2. AE100 - Performance / Skill-Based Error
+  Question:
+  Was the error a performance or skill-based error?
+
+  Simple definition:
+  AE100 means the person tried or was expected to perform the task correctly, but made an execution mistake, attention failure, memory lapse, or skill-related error.
+
+  Q3. AE200 - Judgment / Decision-Making Error
+  Question:
+  Was the error a judgment or decision-making error?
+
+  Simple definition:
+  AE200 means the person made a poor choice, poor plan, wrong decision, or wrong assessment of the situation.
+
+  Q4. AD000 - Unknown Deviation
+  Question:
+  Is there evidence of a deviation, but the specific type of deviation is unknown or not clearly described?
+
+  Simple definition:
+  AD000 means the narrative suggests a deviation from expected operation, but it does not clearly provide enough detail to classify the deviation more specifically.
+
+  Decision process:
+  Step 1:
+  Answer Q2, Q3, and Q4.
+
+  Step 2:
+  Select final HFACS code:
+  - If Q2 = Yes, include AE100.
+  - If Q3 = Yes, include AE200.
+  - If Q4 = Yes, include AD000.
+  - If more than one code is Yes, choose Multiple and list all selected codes.
+  - If Q2, Q3, and Q4 are all No, choose None.
+
+  Return only valid JSON in this exact format:
+  {
+    "Q2_AE100_Performance_Skill_Error": {
+      "Final_Answer": "Yes/No",
+      "Short_Explanation": ""
+    },
+    "Q3_AE200_Judgment_Decision_Error": {
+      "Final_Answer": "Yes/No",
+      "Short_Explanation": ""
+    },
+    "Q4_AD000_Unknown_Deviation": {
+      "Final_Answer": "Yes/No",
+      "Short_Explanation": ""
+    },
+    "Final_HFACS_Code": "AE100/AE200/AD000/Multiple/None",
+    "Codes_Selected": [],
+    "Final_Justification": "",
+    "Confidence": "Low/Medium/High"
+  }
+
+  Narrative:
+  {narrative}
