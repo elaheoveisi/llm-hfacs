@@ -1,0 +1,4 @@
+transition,N_total,N_this_level,N_next_level,N_both,P_joint,P_next_given_this,P_this_given_next
+L4_Organizational → L3_Supervision,3885,0,0,0,0.0,0.0,0.0
+L3_Supervision → L2_Preconditions,3885,0,0,0,0.0,0.0,0.0
+L2_Preconditions → L1_Unsafe_Acts,3885,0,0,0,0.0,0.0,0.0
