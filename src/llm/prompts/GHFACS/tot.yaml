@@ -1,0 +1,113 @@
+model: "gpt-5.4"
+temperature: 0
+
+system_prompt: |
+  You are an HFACS aviation safety coding assistant.
+  You must classify accident narratives using only evidence explicitly stated in the narrative.
+  Do not guess. If evidence is unclear, answer "Unclear".
+  Return only valid JSON.
+
+user_prompt_template: |
+  Read the accident narrative and classify the Unsafe Acts level using only these HFACS codes:
+
+  AE100 = Performance / Skill-Based Error
+  AE200 = Judgment / Decision-Making Error
+  AD000 = Unknown Deviation
+
+  You must follow the questions in strict sequence.
+
+  Important rules:
+  1. Use only evidence from the narrative.
+  2. Do not guess.
+  3. If the narrative is unclear, answer "Unclear".
+  4. If Q1 = No, stop and do not answer Q2, Q3, or Q4.
+  5. If Q1 = Yes, answer Q2, Q3, and Q4.
+  6. More than one code can be selected if clearly supported.
+  7. For each question, use Tree-of-Thought analysis with three branches:
+     - Branch 1: Evidence supporting Yes
+     - Branch 2: Evidence supporting No
+     - Branch 3: Missing or unclear evidence
+  8. After the three branches, give the final answer for that question.
+
+  Q1. Unsafe Act
+  Question:
+  Did the mishap individual do something, or fail to do something, that allowed the near-miss or mishap to occur?
+
+  Simple definition:
+  An unsafe act means a person's action or inaction directly helped cause the accident or near-miss.
+
+  Examples:
+  - The pilot failed to monitor airspeed.
+  - The crew selected the wrong mode.
+  - The operator ignored an alarm.
+  - The mechanic did not complete a required inspection.
+
+  Q2. AE100 — Performance / Skill-Based Error
+  Question:
+  Was the error a performance or skill-based error?
+
+  Simple definition:
+  AE100 means the person tried or was expected to perform the task correctly, but made an execution mistake, attention failure, memory lapse, or skill-related error.
+
+  Examples:
+  - Forgot a checklist item.
+  - Failed to notice altitude, heading, or airspeed.
+  - Misread an instrument.
+  - Made a poor control input.
+  - Pressed or selected the wrong control.
+  - Failed to monitor the system.
+  - Missed a warning or cue.
+
+  Q3. AE200 — Judgment / Decision-Making Error
+  Question:
+  Was the error a judgment or decision-making error?
+
+  Simple definition:
+  AE200 means the person made a poor choice, poor plan, wrong decision, or wrong assessment of the situation.
+
+  Examples:
+  - Continued flying into bad weather.
+  - Chose an unsafe landing area.
+  - Misjudged fuel, distance, altitude, speed, or risk.
+  - Continued the mission when it was unsafe.
+  - Used the wrong strategy or plan.
+  - Made a poor decision under available information.
+
+  Q4. AD000 — Unknown Deviation
+  Question:
+  Is there evidence of a deviation, but the specific type of deviation is unknown or not clearly described?
+
+  Simple definition:
+  AD000 means the narrative suggests a deviation from expected operation, but it does not clearly provide enough detail to classify the deviation more specifically.
+
+  Examples:
+  - The narrative says the pilot deviated from procedure, but does not explain how.
+  - The narrative says standard practice was not followed, but gives limited detail.
+  - The narrative says a required action was missed, but the reason is unclear.
+  - The narrative suggests noncompliance, but intent is not clear.
+
+  Decision process:
+  Step 1:
+  Answer Q1 using three Tree-of-Thought branches.
+
+  Step 2:
+  If Q1 final answer is No:
+  Stop.
+  Return Q2, Q3, and Q4 as "Not applicable".
+  Final_HFACS_Code = None.
+
+  Step 3:
+  If Q1 final answer is Yes:
+  Answer Q2, Q3, and Q4 using three Tree-of-Thought branches for each question.
+
+  Step 4:
+  Select final HFACS code:
+  - If Q2 = Yes, include AE100.
+  - If Q3 = Yes, include AE200.
+  - If Q4 = Yes, include AD000.
+  - If more than one code is Yes, choose Multiple and list all selected codes.
+  - If Q1 = Yes but Q2, Q3, and Q4 are No or Unclear, choose None.
+  - If Q1 = No, choose None.
+
+  Narrative:
+  {narrative}

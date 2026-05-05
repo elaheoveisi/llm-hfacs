@@ -1,31 +1,22 @@
 CPD of Condition_of_Operators
-Condition_of_Operators(0): 0.285653
-Condition_of_Operators(1): 0.714347
+                              Organizational_Climate(0)Organizational_Climate(1)
+Condition_of_Operators(0)                 0.420469            0.220000
+Condition_of_Operators(1)                 0.579531            0.780000
 
 CPD of Personnel_Factors
-                              Inadequate_Supervision(0) | Condition_of_Operators(0)Inadequate_Supervision(0) | Condition_of_Operators(1)Inadequate_Supervision(1) | Condition_of_Operators(0)Inadequate_Supervision(1) | Condition_of_Operators(1)
-Personnel_Factors(0)                      0.195698            0.733766            0.602564            0.636426
-Personnel_Factors(1)                      0.804302            0.266234            0.397436            0.363574
+                              Resource_Management/Organizational_Process(0) | Failed_to_Correct_Problem(0) | Condition_of_Operators(0)Resource_Management/Organizational_Process(0) | Failed_to_Correct_Problem(0) | Condition_of_Operators(1)Resource_Management/Organizational_Process(0) | Failed_to_Correct_Problem(1) | Condition_of_Operators(0)Resource_Management/Organizational_Process(0) | Failed_to_Correct_Problem(1) | Condition_of_Operators(1)Resource_Management/Organizational_Process(1) | Failed_to_Correct_Problem(0) | Condition_of_Operators(0)Resource_Management/Organizational_Process(1) | Failed_to_Correct_Problem(0) | Condition_of_Operators(1)Resource_Management/Organizational_Process(1) | Failed_to_Correct_Problem(1) | Condition_of_Operators(0)Resource_Management/Organizational_Process(1) | Failed_to_Correct_Problem(1) | Condition_of_Operators(1)
+Personnel_Factors(0)                      0.707792            0.242477            0.262376            0.164459            0.801049            0.620854            0.556417            0.378512
+Personnel_Factors(1)                      0.292208            0.757523            0.737624            0.835541            0.198951            0.379146            0.443583            0.621488
 
-CPD of Organizational_Climate
-                              Inadequate_Supervision(0) | Condition_of_Operators(0)Inadequate_Supervision(0) | Condition_of_Operators(1)Inadequate_Supervision(1) | Condition_of_Operators(0)Inadequate_Supervision(1) | Condition_of_Operators(1)
-Organizational_Climate(0)                 0.619622            0.141558            0.311711            0.101637
-Organizational_Climate(1)                 0.380378            0.858442            0.688289            0.898363
-
-CPD of Failed_to_Correct_Problem
-                              Personnel_Factors(0) | Organizational_Climate(0)Personnel_Factors(0) | Organizational_Climate(1)Personnel_Factors(1) | Organizational_Climate(0)Personnel_Factors(1) | Organizational_Climate(1)
-Failed_to_Correct_Problem(0)              0.888652            0.866707            0.768144            0.492565
-Failed_to_Correct_Problem(1)              0.111348            0.133293            0.231856            0.507435
+CPD of Inadequate_Supervision
+                              Resource_Management/Organizational_Process(0) | Organizational_Climate(0) | Condition_of_Operators(0)Resource_Management/Organizational_Process(0) | Organizational_Climate(0) | Condition_of_Operators(1)Resource_Management/Organizational_Process(0) | Organizational_Climate(1) | Condition_of_Operators(0)Resource_Management/Organizational_Process(0) | Organizational_Climate(1) | Condition_of_Operators(1)Resource_Management/Organizational_Process(1) | Organizational_Climate(0) | Condition_of_Operators(0)Resource_Management/Organizational_Process(1) | Organizational_Climate(0) | Condition_of_Operators(1)Resource_Management/Organizational_Process(1) | Organizational_Climate(1) | Condition_of_Operators(0)Resource_Management/Organizational_Process(1) | Organizational_Climate(1) | Condition_of_Operators(1)
+Inadequate_Supervision(0)                 0.536697            0.950466            0.342336            0.699715            0.948780            0.911952            0.663765            0.783973
+Inadequate_Supervision(1)                 0.463303            0.049534            0.657664            0.300285            0.051220            0.088048            0.336235            0.216027
 
 CPD of Violation
                               Personnel_Factors(0) | Failed_to_Correct_Problem(0)Personnel_Factors(0) | Failed_to_Correct_Problem(1)Personnel_Factors(1) | Failed_to_Correct_Problem(0)Personnel_Factors(1) | Failed_to_Correct_Problem(1)
 Violation(0)                              0.837804            0.685373            0.528169            0.280580
 Violation(1)                              0.162196            0.314627            0.471831            0.719420
-
-CPD of Resource_Management/Organizational_Process
-                              Personnel_Factors(0) | Organizational_Climate(0)Personnel_Factors(0) | Organizational_Climate(1)Personnel_Factors(1) | Organizational_Climate(0)Personnel_Factors(1) | Organizational_Climate(1)
-Resource_Management/Organizational_Process(0)            0.168085            0.046441            0.546537            0.311152
-Resource_Management/Organizational_Process(1)            0.831915            0.953559            0.453463            0.688848
 
 CPD of Situational_Factors
                               Resource_Management/Organizational_Process(0) | Organizational_Climate(0)Resource_Management/Organizational_Process(0) | Organizational_Climate(1)Resource_Management/Organizational_Process(1) | Organizational_Climate(0)Resource_Management/Organizational_Process(1) | Organizational_Climate(1)
@@ -37,10 +28,6 @@ CPD of Planned_Inappropriate_Operations
 Planned_Inappropriate_Operations(0)            0.851916            0.716545
 Planned_Inappropriate_Operations(1)            0.148084            0.283455
 
-CPD of Inadequate_Supervision
-Inadequate_Supervision(0): 0.761315
-Inadequate_Supervision(1): 0.238685
-
 CPD of Error
                               Organizational_Climate(0) | Inadequate_Supervision(0) | Failed_to_Correct_Problem(0)Organizational_Climate(0) | Inadequate_Supervision(0) | Failed_to_Correct_Problem(1)Organizational_Climate(0) | Inadequate_Supervision(1) | Failed_to_Correct_Problem(0)Organizational_Climate(0) | Inadequate_Supervision(1) | Failed_to_Correct_Problem(1)Organizational_Climate(1) | Inadequate_Supervision(0) | Failed_to_Correct_Problem(0)Organizational_Climate(1) | Inadequate_Supervision(0) | Failed_to_Correct_Problem(1)Organizational_Climate(1) | Inadequate_Supervision(1) | Failed_to_Correct_Problem(0)Organizational_Climate(1) | Inadequate_Supervision(1) | Failed_to_Correct_Problem(1)
 Error(0)                                  0.819294            0.599245            0.621827            0.287396            0.840694            0.795912            0.959016            0.717852
@@ -51,8 +38,21 @@ CPD of Neither
 Neither(0)                                0.366827            0.685545            0.581218            0.876614            0.664038            0.837443            0.827869            0.911498
 Neither(1)                                0.633173            0.314455            0.418782            0.123386            0.335962            0.162557            0.172131            0.088502
 
+CPD of Failed_to_Correct_Problem
+Failed_to_Correct_Problem(0): 0.724594
+Failed_to_Correct_Problem(1): 0.275406
+
+CPD of Organizational_Climate
+                              Resource_Management/Organizational_Process(0) | Failed_to_Correct_Problem(0)Resource_Management/Organizational_Process(0) | Failed_to_Correct_Problem(1)Resource_Management/Organizational_Process(1) | Failed_to_Correct_Problem(0)Resource_Management/Organizational_Process(1) | Failed_to_Correct_Problem(1)
+Organizational_Climate(0)                 0.109334            0.544703            0.075309            0.179096
+Organizational_Climate(1)                 0.890666            0.455297            0.924691            0.820904
+
 CPD of Supervisory_Violation
                               Failed_to_Correct_Problem(0)Failed_to_Correct_Problem(1)
 Supervisory_Violation(0)                  0.977313            0.878295
 Supervisory_Violation(1)                  0.022687            0.121705
+
+CPD of Resource_Management/Organizational_Process
+Resource_Management/Organizational_Process(0): 0.333476
+Resource_Management/Organizational_Process(1): 0.666524
 
