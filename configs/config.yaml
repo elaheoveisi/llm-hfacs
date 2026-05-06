@@ -2,11 +2,12 @@
   api_key: "REDACTED_OPENAI_KEY"
   input: GAHFACS_Version3.xlsx
   style: tot           # only tot is supported
-  model: gpt-4o-mini
+  model: gpt-4o
   mode: sync           # sync, batch_submit, batch_retrieve
   batch_id: null       # used only when mode=batch_retrieve
-  limit: 20            # null for all rows
+  limit: 20       # null for all rows
   compact: false
+  evaluate: true            # print accuracy + confusion matrix after classification
   retry_wait: 60       # seconds
   max_retries: 3
   workers: 20          # concurrent API requests

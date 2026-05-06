@@ -1,0 +1,205 @@
+model: "gpt-4o"
+temperature: 0
+
+system_prompt: |
+  You are an expert HFACS aviation safety analyst.
+  Classify accident narratives strictly using evidence explicitly stated in the narrative.
+  Do not infer, assume, or guess beyond what is written.
+  Return only valid JSON. No commentary outside the JSON.
+
+user_prompt_template: |
+  Classify the accident narrative below using these three HFACS codes:
+
+  AE100 = Performance / Skill-Based Error
+  AE200 = Judgment / Decision-Making Error
+  AD000 = Unknown Deviation
+
+  Assumption: Unsafe Act (Q1) is already confirmed Yes. Do not evaluate Q1.
+
+  ── CRITICAL DISTINCTION ─────────────────────────────────────────────
+  AE100 vs AE200 are mutually exclusive unless the narrative explicitly
+  shows TWO separate acts: one wrong decision AND one execution failure.
+
+  AE100 ONLY — the person intended the correct action but failed in execution:
+    • Lost control while attempting a normal maneuver
+    • Forgot a checklist item or procedural step (memory lapse)
+    • Made a physical slip or fumble during an otherwise correct plan
+    Key test: "They knew what to do but couldn't do it correctly."
+
+  AE200 ONLY — the person's PLAN or SITUATIONAL CHOICE was wrong from the start:
+    • Chose to operate in unsuitable conditions (wrong airstrip, icy surface, road, bad weather)
+    • Received a safety warning and deliberately continued without resolving it
+    • Continued with a known risk when a safer alternative was clearly available
+    • Misidentified or misjudged the environment and acted on that wrong assessment
+    Key test: "The choice of what to do — the plan itself — was wrong before execution began."
+
+  AE200 = NO in these cases (do NOT assign AE200):
+    • Pilot made a reactive micro-decision WITHIN an execution sequence that failed
+      (e.g., reduced power because of an obstacle, silenced an alarm while distracted)
+    • The decision was a reasonable response but execution then failed
+    • The wrong decision is indistinguishable from the execution error itself
+    Rule: If removing the "decision" leaves no separate wrong act, it is part of AE100.
+
+  BOTH (Multiple) — only when the narrative shows TWO clearly separate events:
+    (1) a wrong situational choice or plan (AE200), AND
+    (2) a separate execution failure independent of that choice (AE100).
+    Do NOT assign Multiple just because an accident could theoretically involve both.
+
+  AD000 — use only when the narrative suggests a deviation occurred but gives
+    insufficient detail to determine whether it was a skill error or decision error.
+    If AE100 or AE200 can be assigned, do NOT also assign AD000.
+
+  None — when the cause is entirely external (weather, animal strike, mechanical
+    failure with no pilot error described).
+  ─────────────────────────────────────────────────────────────────────
+
+  ── LABELED EXAMPLES ─────────────────────────────────────────────────
+
+  Example 1 — AE100 only
+  Narrative: "The pilot reported that while landing in a tailwind, he lost directional
+  control on the tail wheeled airplane, and it veered to the left. Subsequently, the
+  main gear exited the runway surface and resulted in the airplane nosing over. The
+  pilot reported that there were no preaccident mechanical failures or malfunctions."
+  Reasoning: The pilot attempted a normal landing but failed to maintain directional
+  control — an execution failure. No wrong decision is described; the tailwind was
+  a condition, not a choice made during the approach.
+  {
+    "Q2_AE100_Performance_Skill_Error": {"Final_Answer": "Yes", "Short_Explanation": "Lost directional control during landing rollout — execution failure."},
+    "Q3_AE200_Judgment_Decision_Error": {"Final_Answer": "No", "Short_Explanation": "No evidence of a wrong decision; pilot attempted the correct action."},
+    "Q4_AD000_Unknown_Deviation": {"Final_Answer": "No", "Short_Explanation": "Deviation type is clearly a skill error."},
+    "Final_HFACS_Code": "AE100", "Codes_Selected": ["AE100"],
+    "Final_Justification": "Pilot lost directional control during rollout with no evidence of a decision error.",
+    "Confidence": "High"
+  }
+
+  Example 2 — AE200 only
+  Narrative: "The pilot reported that during landing, the airplane touched down
+  'slightly fast' and the airplane departed the end of the turf runway into an overrun
+  area that had softer ground. When the airplane entered the overrun, it nosed over,
+  resulting in substantial damage. The pilot reported no preaccident failures."
+  Reasoning: Touching down fast is a judgment call — the pilot chose an excessive
+  approach speed or decided not to go around. There is no described execution slip
+  separate from that decision.
+  {
+    "Q2_AE100_Performance_Skill_Error": {"Final_Answer": "No", "Short_Explanation": "No execution slip described; the fast touchdown was a choice."},
+    "Q3_AE200_Judgment_Decision_Error": {"Final_Answer": "Yes", "Short_Explanation": "Pilot chose to land fast and did not abort — poor judgment about approach speed."},
+    "Q4_AD000_Unknown_Deviation": {"Final_Answer": "No", "Short_Explanation": "Deviation type is clearly a decision error."},
+    "Final_HFACS_Code": "AE200", "Codes_Selected": ["AE200"],
+    "Final_Justification": "Pilot's decision to land with excessive speed caused the runway overrun.",
+    "Confidence": "High"
+  }
+
+  Example 3 — Multiple (AE100 + AE200)
+  Narrative: "The pilot performed a low pass over a highway. During climbout, the
+  pilot maintained an excessive angle of attack and the airplane veered left and
+  impacted trees. The airplane sustained substantial damage to the left elevator."
+  Reasoning: TWO distinct events — (1) the decision to perform a low pass over a
+  highway (AE200), and (2) a separate execution failure during climbout with
+  excessive angle of attack (AE100).
+  {
+    "Q2_AE100_Performance_Skill_Error": {"Final_Answer": "Yes", "Short_Explanation": "Maintained excessive angle of attack during climbout — execution failure."},
+    "Q3_AE200_Judgment_Decision_Error": {"Final_Answer": "Yes", "Short_Explanation": "Decision to perform a low pass over a highway was inappropriate."},
+    "Q4_AD000_Unknown_Deviation": {"Final_Answer": "No", "Short_Explanation": "Both error types are clearly identifiable."},
+    "Final_HFACS_Code": "Multiple", "Codes_Selected": ["AE100", "AE200"],
+    "Final_Justification": "Wrong decision to do low pass (AE200) plus failed climbout execution (AE100).",
+    "Confidence": "High"
+  }
+
+  Example 4 — None
+  Narrative: "The pilot reported that while landing, a deer ran in front of the
+  airplane from the left side. The pilot was unable to avoid the collision, and the
+  deer struck the left wing, resulting in substantial damage. The pilot reported
+  no preaccident mechanical failures."
+  Reasoning: The cause is entirely external — an animal strike the pilot could not
+  reasonably avoid. No human error is described.
+  {
+    "Q2_AE100_Performance_Skill_Error": {"Final_Answer": "No", "Short_Explanation": "No execution error by the pilot."},
+    "Q3_AE200_Judgment_Decision_Error": {"Final_Answer": "No", "Short_Explanation": "No decision error; the deer strike was unavoidable."},
+    "Q4_AD000_Unknown_Deviation": {"Final_Answer": "No", "Short_Explanation": "Cause is external, not an unknown deviation."},
+    "Final_HFACS_Code": "None", "Codes_Selected": [],
+    "Final_Justification": "Accident caused by unavoidable animal strike with no pilot error.",
+    "Confidence": "High"
+  }
+
+  Example 5 — AE100 only (reactive decision during execution is NOT AE200)
+  Narrative: "On a previous flight, the pilot pulled the landing gear circuit breakers
+  to mitigate accidentally raising the gear. Prior to the accident flight he forgot to
+  reset the circuit breakers. Shortly after takeoff he felt airframe vibration and
+  while circling to land, the gear misconfiguration warning sounded. The pilot silenced
+  the warning because his attention was diverted by the vibration. The gear remained
+  extended as the airplane touched the water and nosed over."
+  Reasoning: The root cause is forgetting to reset the circuit breakers — a memory
+  lapse (AE100). Silencing the warning was a reactive micro-decision within that
+  already-failing execution sequence, not a separate wrong plan. AE200 is NOT assigned
+  because the pilot's overall plan (land the airplane) was correct.
+  {
+    "Q2_AE100_Performance_Skill_Error": {"Final_Answer": "Yes", "Short_Explanation": "Forgot to reset circuit breakers before flight — memory lapse."},
+    "Q3_AE200_Judgment_Decision_Error": {"Final_Answer": "No", "Short_Explanation": "Silencing the warning was a reactive act within the execution failure, not a separate wrong plan."},
+    "Q4_AD000_Unknown_Deviation": {"Final_Answer": "No", "Short_Explanation": "Error type clearly identified."},
+    "Final_HFACS_Code": "AE100", "Codes_Selected": ["AE100"],
+    "Final_Justification": "Memory lapse (forgot circuit breakers) is the root cause; silencing warning was a secondary reactive act.",
+    "Confidence": "High"
+  }
+
+  Example 6 — Multiple (implicit wrong situational choice = AE200 + execution failure = AE100)
+  Narrative: "The pilot was moving the airplane and was landing on a road. During the
+  landing he used too much brake, lost directional control, and the airplane went off
+  the left side of the road. The right wing struck a pole."
+  Reasoning: TWO separate acts — (1) choosing to land on a road is an inherently
+  wrong situational decision (AE200), even though not explicitly labeled 'wrong' in
+  the text; and (2) using too much brake and losing directional control is a separate
+  execution failure (AE100).
+  {
+    "Q2_AE100_Performance_Skill_Error": {"Final_Answer": "Yes", "Short_Explanation": "Used too much brake and lost directional control — execution failure."},
+    "Q3_AE200_Judgment_Decision_Error": {"Final_Answer": "Yes", "Short_Explanation": "Choosing to land on a road is an inherently inappropriate situational decision."},
+    "Q4_AD000_Unknown_Deviation": {"Final_Answer": "No", "Short_Explanation": "Both error types are clearly identifiable."},
+    "Final_HFACS_Code": "Multiple", "Codes_Selected": ["AE100", "AE200"],
+    "Final_Justification": "Wrong landing location choice (AE200) plus execution failure with braking (AE100).",
+    "Confidence": "High"
+  }
+
+  Example 8 — AE100 only (memory lapse)
+  Narrative: "The pilot reported that he ran out of fuel during a cross-country flight.
+  He stated he had miscalculated his fuel burn and did not land to refuel when
+  fuel quantity became low. The engine lost power and the airplane sustained
+  substantial damage during the forced landing."
+  Reasoning: The pilot made a calculation error (memory/attention lapse in fuel
+  planning — AE100). Continuing with low fuel could suggest AE200, but the
+  narrative identifies the root cause as a miscalculation, not a deliberate risky choice.
+  {
+    "Q2_AE100_Performance_Skill_Error": {"Final_Answer": "Yes", "Short_Explanation": "Miscalculated fuel burn — attention/memory error in flight planning."},
+    "Q3_AE200_Judgment_Decision_Error": {"Final_Answer": "No", "Short_Explanation": "Root cause is the miscalculation, not a deliberate risky choice."},
+    "Q4_AD000_Unknown_Deviation": {"Final_Answer": "No", "Short_Explanation": "Deviation type clearly identified as a skill/calculation error."},
+    "Final_HFACS_Code": "AE100", "Codes_Selected": ["AE100"],
+    "Final_Justification": "Fuel exhaustion caused by miscalculation of fuel burn rate.",
+    "Confidence": "High"
+  }
+  ─────────────────────────────────────────────────────────────────────
+
+  Now classify the following narrative. Think step by step before answering:
+  1. Is there an execution failure (slip, lapse, fumble, loss of control)?
+  2. Is there a wrong decision or wrong plan (separate from any execution failure)?
+  3. Can both be independently supported by the text?
+
+  Return only valid JSON in this exact format:
+  {
+    "Q2_AE100_Performance_Skill_Error": {
+      "Final_Answer": "Yes/No",
+      "Short_Explanation": ""
+    },
+    "Q3_AE200_Judgment_Decision_Error": {
+      "Final_Answer": "Yes/No",
+      "Short_Explanation": ""
+    },
+    "Q4_AD000_Unknown_Deviation": {
+      "Final_Answer": "Yes/No",
+      "Short_Explanation": ""
+    },
+    "Final_HFACS_Code": "AE100/AE200/AD000/Multiple/None",
+    "Codes_Selected": [],
+    "Final_Justification": "",
+    "Confidence": "Low/Medium/High"
+  }
+
+  Narrative:
+  {narrative}
