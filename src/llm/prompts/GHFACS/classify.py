@@ -2,18 +2,14 @@ import os, json, time, tempfile, shutil, yaml, pandas as pd, openai
 from pathlib import Path
 from tqdm import tqdm
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from sklearn.metrics import accuracy_score, confusion_matrix, f1_score, precision_score, recall_score
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
 
 ROOT = Path(__file__).resolve().parents[4]
 DATA_DIR, CFG_PATH = ROOT / "data" / "GHFACS", ROOT / "configs" / "config.yaml"
 PROMPT_PATH = Path(__file__).with_name("initial_prompting.yaml")
-FINAL = {"Final_Answer", "Final_HFACS_Code", "Codes_Selected", "Final_Justification", "Confidence"}
+FINAL = {"Final_Answer", "Final_Class", "Final_HFACS_Code", "Codes_Selected", "Final_Justification", "Confidence"}
 JSON_MODELS, NARR = {"gpt-4o", "gpt-4o-mini", "gpt-4-turbo", "gpt-3.5-turbo"}, "narr_accf"
-LABEL_PRED_COLS = {
-    "AE100": "Q2_AE100_Performance_Skill_Error__Final_Answer",
-    "AE200": "Q3_AE200_Judgment_Decision_Error__Final_Answer",
-    "AD000": "Q4_AD000_Unknown_Deviation__Final_Answer",
-}
+CLASSES = ["AE100 only", "AE200 only", "Both", "anyofthem"]
 
 def dget(d, k, v=None): return d.get(k, v) if isinstance(d, dict) else v
 def o2n(v): return None if v in (None, "", "none", "null") else int(v)
@@ -31,16 +27,22 @@ def llm_paths(llm):
     out = DATA_DIR / f"{inp_path.stem}_LLM_Output_initial_prompt{'_compact' if compact else ''}.csv"
     return inp_path, out, compact
 
-def binary_metrics(y_true, y_pred):
-    tp, fn, fp, tn = confusion_matrix(y_true, y_pred, labels=[1, 0]).ravel()
-    return {
-        "N": len(y_true), "Support": int(y_true.sum()),
-        "Accuracy": round(accuracy_score(y_true, y_pred), 4),
-        "Precision": round(precision_score(y_true, y_pred, zero_division=0), 4),
-        "Recall": round(recall_score(y_true, y_pred, zero_division=0), 4),
-        "F1": round(f1_score(y_true, y_pred, zero_division=0), 4),
-        "TP": int(tp), "TN": int(tn), "FP": int(fp), "FN": int(fn),
+def four_class(ae100, ae200):
+    if ae100 and ae200: return "Both"
+    if ae100: return "AE100 only"
+    if ae200: return "AE200 only"
+    return "anyofthem"
+
+def normalize_class(value):
+    if pd.isna(value): return None
+    value = str(value).strip().lower()
+    aliases = {
+        "ae100": "AE100 only", "ae100 only": "AE100 only",
+        "ae200": "AE200 only", "ae200 only": "AE200 only",
+        "both": "Both", "multiple": "Both",
+        "none": "anyofthem", "anyofthem": "anyofthem",
     }
+    return aliases.get(value)
 
 def call(client, msgs, llm, temp, retries, wait):
     model = dget(llm, "model", "gpt-4o-mini")
@@ -89,28 +91,40 @@ def read_input_table(path, tries=3, wait=2):
             time.sleep(wait)
 
 def evaluate_labels(llm_out, gt_path):
-    """Compare LLM predictions for AE100, AE200, AD000 against ground-truth dataset labels."""
-    llm = pd.read_csv(llm_out)
+    """Evaluate four-class Final_Class predictions against ground truth."""
+    llm = pd.read_csv(llm_out, keep_default_na=False, na_values=[""])
     gt = _reader(gt_path)(gt_path)
-    gt = gt[list(LABEL_PRED_COLS)].reset_index().rename(columns={"index": "original_index"})
+    gt = gt[["AE100", "AE200"]].reset_index().rename(columns={"index": "original_index"})
     merged = llm.merge(gt, on="original_index", how="inner")
     if merged.empty:
         raise ValueError("No rows matched between LLM output and ground truth — check original_index alignment.")
-    rows = []
-    for label, pred_col in LABEL_PRED_COLS.items():
-        y_true = (merged[label] == label).astype(int)
-        y_pred = (merged[pred_col].str.strip().str.lower() == "yes").astype(int)
-        metrics = binary_metrics(y_true, y_pred)
-        rows.append({"Label": label, **metrics})
-        tp, tn, fp, fn = metrics["TP"], metrics["TN"], metrics["FP"], metrics["FN"]
-        print(f"\n--- Confusion Matrix: {label} ---")
-        print(f"{'':20s} {'Pred: YES':>10} {'Pred: NO':>10}")
-        print(f"{'True: YES (positive)':20s} {tp:>10} {fn:>10}")
-        print(f"{'True: NO  (negative)':20s} {fp:>10} {tn:>10}")
-    result = pd.DataFrame(rows).set_index("Label")
-    print("\n=== Label Accuracy vs. Ground Truth ===")
-    print(result[["N", "Support", "Accuracy", "Precision", "Recall", "F1"]].to_string())
-    return result
+    class_col = next((c for c in ("Final_Class", "Final_HFACS_Code") if c in merged.columns), None)
+    if class_col is None:
+        raise ValueError(f"Missing Final_Class or Final_HFACS_Code column in LLM output. Columns: {list(llm.columns)}")
+
+    y_true = [four_class(r["AE100"] == "AE100", r["AE200"] == "AE200") for _, r in merged.iterrows()]
+    y_pred = [normalize_class(r[class_col]) for _, r in merged.iterrows()]
+
+    valid = [p in CLASSES for p in y_pred]
+    invalid = merged[[not v for v in valid]][["original_index", class_col]]
+    y_true_v = [t for t, v in zip(y_true, valid) if v]
+    y_pred_v = [p for p, v in zip(y_pred, valid) if v]
+
+    cm = confusion_matrix(y_true_v, y_pred_v, labels=CLASSES)
+    cm_df = pd.DataFrame(cm, index=[f"True: {c}" for c in CLASSES], columns=[f"Pred: {c}" for c in CLASSES])
+
+    print("\n=== Four-Class Evaluation (Final_Class vs. Ground Truth) ===")
+    print(f"Total rows: {len(y_true)}")
+    if not invalid.empty:
+        print(f"Excluded (blank/invalid Final_Class): {len(invalid)}")
+        print(invalid.to_string(index=False))
+    print(f"Evaluated rows: {len(y_true_v)}")
+    print(f"Accuracy: {accuracy_score(y_true_v, y_pred_v):.4f}")
+    print("\n--- Confusion Matrix ---")
+    print(cm_df.to_string())
+    print("\n--- Classification Report ---")
+    print(classification_report(y_true_v, y_pred_v, labels=CLASSES, zero_division=0))
+    return cm_df
 
 if __name__ == "__main__":
     cfg = yaml.safe_load(CFG_PATH.read_text(encoding="utf-8"))
