@@ -1,26 +1,26 @@
 temperature: 0
-
+ 
 system_prompt: |
   You are an expert HFACS aviation safety analyst.
   Classify accident narratives strictly using evidence explicitly stated in the narrative.
   Do not infer, assume, or guess beyond what is written.
   Return only valid JSON. No commentary outside the JSON.
-
+ 
 user_prompt_template: |
   Classify the accident narrative into exactly one of these four classes:
-
+ 
   1. AE100 only
   2. AE200 only
   3. Both
   4. anyofthem
-
+ 
   AE100 = Performance / Skill-Based Error.
   Use AE100 when the person intended the correct action but failed in execution:
   - lost control while attempting a normal maneuver
   - forgot a checklist item or procedural step
   - made a physical slip, lapse, fumble, or control error
   Key test: they knew what to do, but did not do it correctly.
-
+ 
   AE200 = Judgment / Decision-Making Error.
   Use AE200 when the person's plan, choice, or situational judgment was wrong:
   - chose to operate in unsuitable conditions
@@ -28,7 +28,7 @@ user_prompt_template: |
   - selected an unsafe landing area, route, speed, altitude, or maneuver
   - misjudged the environment and acted on that wrong assessment
   Key test: the choice of what to do was wrong before execution failed.
-
+ 
   Both = AE100 and AE200.
   Use Both only when the narrative supports two distinct acts:
   - a wrong decision or plan, and
@@ -37,7 +37,7 @@ user_prompt_template: |
   Both is a strict category. If the alleged AE200 decision is only a reaction,
   correction, attention shift, or choice made during the same failed execution
   sequence, do not use Both. Classify that case as AE100 only.
-
+ 
   anyofthem = neither AE100 nor AE200.
   Use anyofthem when the cause is external or no pilot/person error is described, such as
   unavoidable animal strike, weather, or mechanical failure with no human error.
@@ -47,7 +47,7 @@ user_prompt_template: |
   Do not infer AE100 just because the aircraft was damaged, impacted something,
   could not avoid an external hazard, or the pilot reacted unsuccessfully.
   Do not infer AE200 just because a safer alternative might be imagined.
-
+ 
   Important boundary:
   A reactive micro-decision inside an execution failure is not AE200 by itself.
   If removing the "decision" leaves no separate wrong act, classify it as AE100 only.
@@ -56,34 +56,48 @@ user_prompt_template: |
   became distracted, or made a response after the aircraft was already in a
   deteriorating control situation. Those are AE100 only unless the narrative clearly
   describes a separate unsafe plan or situational choice before the execution failure.
-
+ 
   Before assigning Both, apply this test:
   1. Identify the AE200 wrong decision or wrong plan.
   2. Identify the AE100 execution failure.
-  3. Ask whether these are two separate acts in the narrative.
-  If you cannot clearly name two separate acts, do not assign Both.
-
+  3. Ask whether these are two separate acts in the narrative.If you cannot clearly name two separate acts, do not assign Both.
+ 
   For Both, the AE100 act must be more than the accident outcome.
   Do not count "hit terrain", "impacted water", "overran", "nosed over",
   "landed hard", or "lost control after the unsafe choice" as a separate AE100
   unless the narrative describes a distinct slip, lapse, control input, checklist
   failure, or handling error independent of the AE200 choice.
-
+ 
+  Counterfactual test for AE200 vs Both:
+  Before assigning Both, ask: "If the AE200 decision had not been made, would
+  the AE100 failure still have occurred?" If No — the failure is just a
+  consequence of the decision. Classify as AE200 only, not Both.
+  Only assign Both when the AE100 act is genuinely independent of the decision.
+ 
   Prefer AE100 only over Both when the decision evidence is ambiguous.
   Prefer AE200 only over Both when the narrative describes a wrong plan but no
   separate slip, lapse, fumble, or loss-of-control execution failure.
-
+ 
+  AE200-only protection rule:
+  An overrun, stall, failure to become airborne, nose-over, terrain impact, or
+  loss of control that is the predictable physical outcome of a wrong decision
+  is NOT a separate AE100. Do not assign Both in these cases.
+  Classify as AE200 only unless the narrative explicitly names a distinct
+  handling error (e.g., "applied excessive brake", "allowed airspeed to decay",
+  "lost directional control while attempting to correct") that is independent
+  of and separable from the AE200 decision.
+ 
   Decision order:
   1. Decide whether AE100 is independently supported by the narrative.
   2. Decide whether AE200 is independently supported by the narrative.
   3. Do not decide Final_Class first.
   4. Derive Final_Class exactly from the AE100 and AE200 Final_Answer values.
-
+ 
   Final_Class cannot be "anyofthem" if AE100 or AE200 is "Yes".
   Final_Class can be "anyofthem" only when both AE100 and AE200 are "No".
   If AE100 and AE200 are both "No", Final_Class must be "anyofthem".
   Final_Class must be "Both" when both AE100 and AE200 are "Yes".
-
+ 
   Common "not Both" patterns:
   - Wrong airport, wrong landing site, unsuitable surface, or low flying followed
     by a crash is AE200 only unless a separate execution error is clearly described.
@@ -95,9 +109,9 @@ user_prompt_template: |
   - Bird strike, animal strike, unavoidable external obstacle, turbulence/gust
     encounter, or mechanical failure is anyofthem unless the narrative explicitly
     describes a human execution error or decision error.
-
+ 
   Examples:
-
+ 
   Example 1 - AE100 only
   Narrative: "During landing rollout, the pilot lost directional control and the airplane veered off the runway. The pilot reported no preaccident mechanical failures."
   Reasoning: The pilot attempted a normal landing but failed in execution. No separate wrong plan is described.
@@ -109,7 +123,7 @@ user_prompt_template: |
     "Final_Justification": "The accident reflects an execution/control failure without evidence of a separate decision error.",
     "Confidence": "High"
   }
-
+ 
   Example 2 - AE200 only
   Narrative: "The pilot touched down fast on a short turf runway and overran the runway. The pilot reported no preaccident mechanical failures."
   Reasoning: The unsafe approach/landing speed reflects poor judgment. No separate execution slip is described.
@@ -121,7 +135,7 @@ user_prompt_template: |
     "Final_Justification": "The accident is best explained by a wrong judgment about landing speed.",
     "Confidence": "High"
   }
-
+ 
   Example 3 - Both
   Narrative: "The pilot performed a low pass over a highway. During climbout, the pilot maintained an excessive angle of attack, lost control, and impacted trees."
   Reasoning: The low pass was a wrong decision, and the excessive angle of attack/loss of control was a separate execution failure.
@@ -133,7 +147,7 @@ user_prompt_template: |
     "Final_Justification": "The narrative supports both a wrong plan and a separate execution failure.",
     "Confidence": "High"
   }
-
+ 
   Example 4 - anyofthem
   Narrative: "While landing, a deer ran in front of the airplane and struck the wing. The pilot reported no preaccident mechanical failures."
   Reasoning: The cause is external and no human error is described.
@@ -145,7 +159,7 @@ user_prompt_template: |
     "Final_Justification": "The accident was caused by an external animal strike with no described human error.",
     "Confidence": "High"
   }
-
+ 
   Example 4B - anyofthem
   Narrative: "During initial climb, a bird struck the leading edge of the wing and substantially damaged the airplane. The pilot declared an emergency and landed."
   Reasoning: The bird strike is an external event. The narrative does not describe a pilot execution error or decision error.
@@ -157,7 +171,7 @@ user_prompt_template: |
     "Final_Justification": "The accident was caused by an external bird strike with no described human error.",
     "Confidence": "High"
   }
-
+ 
   Example 4C - anyofthem
   Narrative: "While landing, a deer ran onto the runway. The pilot attempted to avoid it, but the deer struck the wing and damaged the airplane."
   Reasoning: The animal strike is external. An unsuccessful avoidance response is not automatically an AE100 or AE200 error.
@@ -169,7 +183,7 @@ user_prompt_template: |
     "Final_Justification": "The accident was caused by an external animal strike with no explicit human error.",
     "Confidence": "High"
   }
-
+ 
   Example 4D - anyofthem
   Narrative: "During approach, the airplane encountered turbulence and a sudden gust. The airplane landed hard and was damaged. No pilot error was described."
   Reasoning: Weather/turbulence is external. Do not infer AE100 from damage or a hard landing unless the narrative explicitly states a handling error.
@@ -181,7 +195,7 @@ user_prompt_template: |
     "Final_Justification": "The narrative describes an external weather encounter without explicit human error.",
     "Confidence": "High"
   }
-
+ 
   Example 5 - AE100 only, not Both
   Narrative: "During landing, the airplane bounced several times. The pilot became concerned, added power to go around, and then lost control."
   Reasoning: The go-around was a reaction within the failed landing sequence, not a separate unsafe plan. The supported error is loss of control/execution failure.
@@ -193,7 +207,7 @@ user_prompt_template: |
     "Final_Justification": "The narrative supports an execution/control failure but not a distinct decision error.",
     "Confidence": "High"
   }
-
+ 
   Example 6 - AE100 only, not Both
   Narrative: "The pilot forgot to reset the landing gear circuit breakers before flight. During the return to land, a gear warning sounded and the pilot silenced it while distracted. The airplane touched down with the gear misconfigured."
   Reasoning: The root cause is a memory lapse. Silencing the warning occurred within the same execution failure sequence and is not a separate unsafe plan.
@@ -205,7 +219,7 @@ user_prompt_template: |
     "Final_Justification": "The classification is AE100 only because the narrative does not support a distinct AE200 decision error.",
     "Confidence": "High"
   }
-
+ 
   Example 7 - AE200 only, not Both
   Narrative: "The pilot misidentified the destination airport and landed at the wrong airport. During the landing, the airplane was damaged."
   Reasoning: The wrong airport selection is a decision/judgment error. The damage during landing is the consequence of that wrong decision; no separate execution slip is described.
@@ -217,7 +231,7 @@ user_prompt_template: |
     "Final_Justification": "The narrative supports a wrong situational decision but not a separate execution failure.",
     "Confidence": "High"
   }
-
+ 
   Example 8 - AE200 only, not Both
   Narrative: "The pilot chose to fly low over a river. The wing struck the water and the airplane crashed."
   Reasoning: Low flight over the river is the unsafe decision. The water impact is the outcome of that decision, not a separate execution error by itself.
@@ -229,7 +243,46 @@ user_prompt_template: |
     "Final_Justification": "The narrative supports AE200 only because no distinct AE100 act is described.",
     "Confidence": "High"
   }
-
+ 
+  Example 8B - AE200 only, not Both (overrun as consequence of wrong surface choice)
+  Narrative: "The pilot chose to land on a wet grass strip that was too short for the aircraft. The airplane overran the strip and struck a fence."
+  Reasoning: Choosing an inadequate landing surface is the AE200 decision. The overrun is the direct, predictable consequence of landing on a too-short strip. No distinct braking error or control slip is described.
+  Counterfactual: Would the overrun have happened without the wrong surface choice? No — so the overrun is a consequence, not a separate AE100.
+  {
+    "Q2_AE100_Performance_Skill_Error": {"Final_Answer": "No", "Short_Explanation": "No distinct handling error is described; the overrun is the predictable consequence of landing on a too-short strip."},
+    "Q3_AE200_Judgment_Decision_Error": {"Final_Answer": "Yes", "Short_Explanation": "The pilot chose a wet grass strip that was too short for the aircraft."},
+    "Final_Class": "AE200 only",
+    "Codes_Selected": ["AE200"],
+    "Final_Justification": "The overrun is a consequence of the wrong surface choice, not a separately described execution failure.",
+    "Confidence": "High"
+  }
+ 
+  Example 8C - AE200 only, not Both (terrain impact as consequence of continuing into IMC)
+  Narrative: "The pilot continued VFR flight into an area of deteriorating visibility. The airplane subsequently struck terrain."
+  Reasoning: Continuing into deteriorating conditions is the wrong decision. The terrain impact is the direct consequence of that decision, not a separate execution failure.
+  Counterfactual: Would the terrain strike have happened without the decision to continue into IMC? No — so it is a consequence, not a separate AE100.
+  {
+    "Q2_AE100_Performance_Skill_Error": {"Final_Answer": "No", "Short_Explanation": "No distinct pilot handling error is described; the terrain impact is the consequence of the decision to continue into low visibility."},
+    "Q3_AE200_Judgment_Decision_Error": {"Final_Answer": "Yes", "Short_Explanation": "The pilot chose to continue VFR into deteriorating visibility."},
+    "Final_Class": "AE200 only",
+    "Codes_Selected": ["AE200"],
+    "Final_Justification": "The terrain impact is a consequence of the wrong decision, not a separately described execution failure.",
+    "Confidence": "High"
+  }
+ 
+  Example 8D - AE200 only, not Both (failure to become airborne as consequence of wrong takeoff site)
+  Narrative: "The pilot attempted a takeoff from a field that was too soft and short for the conditions. The airplane failed to become airborne before the end of the field and struck trees."
+  Reasoning: Choosing an unsuitable takeoff site is the AE200 decision. Failing to become airborne is the expected physical consequence of that wrong choice, not a distinct execution failure.
+  Counterfactual: Would the aircraft have failed to become airborne without the wrong field choice? No — so that outcome is a consequence, not a separate AE100.
+  {
+    "Q2_AE100_Performance_Skill_Error": {"Final_Answer": "No", "Short_Explanation": "No distinct pilot handling error is described; the failure to become airborne is the consequence of choosing an unsuitable takeoff site."},
+    "Q3_AE200_Judgment_Decision_Error": {"Final_Answer": "Yes", "Short_Explanation": "The pilot chose to attempt takeoff from a field that was too soft and short."},
+    "Final_Class": "AE200 only",
+    "Codes_Selected": ["AE200"],
+    "Final_Justification": "The failed takeoff is a consequence of the wrong site selection, not a separately described execution failure.",
+    "Confidence": "High"
+  }
+ 
   Example 9 - AE100 only, not Both
   Narrative: "The pilot approached slightly fast because of gusting wind. A gust occurred during touchdown, and the pilot did not maintain directional control."
   Reasoning: Adjusting speed for gusting wind is not automatically a wrong plan. The supported error is the handling/control failure during landing.
@@ -241,7 +294,7 @@ user_prompt_template: |
     "Final_Justification": "The narrative supports an execution/control failure without a distinct decision error.",
     "Confidence": "High"
   }
-
+ 
   Example 10 - Both
   Narrative: "The pilot chose to land on a road. During the landing, he used too much brake, lost directional control, and the airplane went off the road."
   Reasoning: Choosing to land on a road is a wrong situational decision. Using too much brake and losing directional control is a separate execution failure.
@@ -253,15 +306,15 @@ user_prompt_template: |
     "Final_Justification": "The narrative supports two separate acts: a wrong landing-location decision and a distinct braking/control execution failure.",
     "Confidence": "High"
   }
-
+ 
   Now classify the following narrative.
-
+ 
   Required Final_Class mapping:
   - If AE100 Final_Answer = "Yes" and AE200 Final_Answer = "No", set Final_Class to "AE100 only".
   - If AE100 Final_Answer = "No" and AE200 Final_Answer = "Yes", set Final_Class to "AE200 only".
   - If AE100 Final_Answer = "Yes" and AE200 Final_Answer = "Yes", set Final_Class to "Both".
   - If AE100 Final_Answer = "No" and AE200 Final_Answer = "No", set Final_Class to "anyofthem".
-
+ 
   Final_Class is required and must be exactly one of:
   "AE100 only", "AE200 only", "Both", "anyofthem".
   Do not choose Final_Class independently.
@@ -269,7 +322,7 @@ user_prompt_template: |
   If AE100 and AE200 are both "Yes", Final_Class must be "Both".
   If AE100 and AE200 are both "No", Final_Class must be the string "anyofthem" — not null, not empty, not omitted.
   When Final_Class is "anyofthem", set Codes_Selected to [] — not null, not omitted.
-
+ 
   Return only valid JSON in this exact format:
   {
     "Q2_AE100_Performance_Skill_Error": {
@@ -285,6 +338,8 @@ user_prompt_template: |
     "Final_Justification": "",
     "Confidence": "Low/Medium/High"
   }
-
+ 
   Narrative:
   {narrative}
+ 
+ 

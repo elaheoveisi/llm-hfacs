@@ -6,7 +6,7 @@ from sklearn.metrics import accuracy_score, classification_report, confusion_mat
 
 ROOT = Path(__file__).resolve().parents[4]
 DATA_DIR, CFG_PATH = ROOT / "data" / "GHFACS", ROOT / "configs" / "config.yaml"
-PROMPT_PATH = Path(__file__).with_name("initial_prompting.yaml")
+DEFAULT_PROMPT = "initial_prompting"
 FINAL = {"Final_Answer", "Final_Class", "Final_HFACS_Code", "Codes_Selected", "Final_Justification", "Confidence"}
 JSON_MODELS, NARR = {"gpt-4o", "gpt-4o-mini", "gpt-4-turbo", "gpt-3.5-turbo"}, "narr_accf"
 CLASSES = ["AE100 only", "AE200 only", "Both", "anyofthem"]
@@ -23,9 +23,10 @@ def llm_paths(llm):
     inp = dget(llm, "input")
     if not inp: raise ValueError("Missing input. Set llm.input in config.")
     compact = bool(dget(llm, "compact", False))
+    prompt_name = dget(llm, "prompt", DEFAULT_PROMPT)
     inp_path = DATA_DIR / inp
-    out = DATA_DIR / f"{inp_path.stem}_LLM_Output_initial_prompt{'_compact' if compact else ''}.csv"
-    return inp_path, out, compact
+    out = DATA_DIR / f"{inp_path.stem}_LLM_Output_{prompt_name}{'_compact' if compact else ''}.csv"
+    return inp_path, out, compact, prompt_name
 
 def four_class(ae100, ae200):
     if ae100 and ae200: return "Both"
@@ -61,9 +62,15 @@ def call(client, msgs, llm, temp, retries, wait):
             time.sleep(wait * i)
 
 def process_row(args):
-    i, n, client, sys_p, usr_t, llm, temp, retries, wait, compact = args
+    i, n, client, sys_p, usr_t, step2_t, llm, temp, retries, wait, compact = args
     if not n or n.lower() in {"nan", "none", ""}: return i, {"original_index": i, "skip_reason": "empty_narrative"}
-    try: x = flatten(json.loads(call(client, ([{"role": "system", "content": sys_p}] if sys_p else []) + [{"role": "user", "content": usr_t.replace("{narrative}", n).replace("{NARRATIVE_TEXT}", n)}], llm, temp, retries, wait)))
+    def msgs(content): return ([{"role": "system", "content": sys_p}] if sys_p else []) + [{"role": "user", "content": content}]
+    try:
+        step1_out = call(client, msgs(usr_t.replace("{narrative}", n).replace("{NARRATIVE_TEXT}", n)), llm, temp, retries, wait)
+        if step2_t:
+            x = flatten(json.loads(call(client, msgs(step2_t.replace("{preconditions}", step1_out)), llm, temp, retries, wait)))
+        else:
+            x = flatten(json.loads(step1_out))
     except RuntimeError: raise
     except Exception as e: x = {"error": str(e)}
     x |= {"original_index": i, NARR: n}
@@ -129,16 +136,18 @@ def evaluate_labels(llm_out, gt_path):
 if __name__ == "__main__":
     cfg = yaml.safe_load(CFG_PATH.read_text(encoding="utf-8"))
     llm = dget(cfg if isinstance(cfg, dict) else {}, "llm", {})
-    inp_path, out, compact = llm_paths(llm)
+    inp_path, out, compact, prompt_name = llm_paths(llm)
 
     if dget(llm, "mode") == "evaluate":
         evaluate_labels(out, inp_path)
     else:
         key = (dget(llm, "api_key") or os.getenv("OPENAI_API_KEY", "")).strip()
         if not key: raise RuntimeError("Missing API key. Set llm.api_key or OPENAI_API_KEY.")
-        prm = yaml.safe_load(PROMPT_PATH.read_text(encoding="utf-8"))
+        prompt_path = Path(__file__).with_name(f"{prompt_name}.yaml")
+        prm = yaml.safe_load(prompt_path.read_text(encoding="utf-8"))
         sys_p = dget(prm, "system_prompt", dget(prm, "system", "")) if isinstance(prm, dict) else ""
-        usr_t = dget(prm, "user_prompt_template", dget(prm, "prompt_template", "")) if isinstance(prm, dict) else prm
+        step2_t = dget(prm, "step2_prompt") if isinstance(prm, dict) else None
+        usr_t = (dget(prm, "step1_prompt") or dget(prm, "user_prompt_template", dget(prm, "prompt_template", ""))) if isinstance(prm, dict) else prm
         temp = float(dget(prm, "temperature", 0.0) if isinstance(prm, dict) else 0.0)
         limit = o2n(dget(llm, "limit"))
         retries, wait = int(dget(llm, "max_retries", 3)), int(dget(llm, "retry_wait", 60))
@@ -147,11 +156,11 @@ if __name__ == "__main__":
         if NARR not in df.columns: raise ValueError(f"Missing {NARR} column.")
         client = openai.OpenAI(api_key=key)
         subset = df.head(limit) if limit else df
-        tasks = [(i, str(r[NARR]).strip(), client, sys_p, usr_t, llm, temp, retries, wait, compact) for i, r in subset.iterrows()]
+        tasks = [(i, str(r[NARR]).strip(), client, sys_p, usr_t, step2_t, llm, temp, retries, wait, compact) for i, r in subset.iterrows()]
         results = {}
         with ThreadPoolExecutor(max_workers=workers) as executor:
             futures = {executor.submit(process_row, t): t[0] for t in tasks}
-            for f in tqdm(as_completed(futures), total=len(futures), desc="[initial_prompt]"):
+            for f in tqdm(as_completed(futures), total=len(futures), desc=f"[{prompt_name}]"):
                 i, row = f.result()
                 results[i] = row
         rows = [results[i] for i in sorted(results)]

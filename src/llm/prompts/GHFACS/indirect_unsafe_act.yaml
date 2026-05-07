@@ -1,0 +1,95 @@
+temperature: 0
+
+system_prompt: |
+  You are an expert HFACS aviation safety analyst.
+  Classify strictly using evidence explicitly stated in the text provided.
+  Do not infer, assume, or guess beyond what is written.
+  Return only valid JSON. No commentary outside the JSON.
+
+step1_prompt: |
+  Read the accident narrative below. For each of the seven HFACS subcategories
+  under Preconditions for Unsafe Acts, determine whether it is present.
+  Mark Present = "Yes" only when the narrative explicitly states evidence.
+  Provide a brief quote or paraphrase as Evidence; leave Evidence empty if No.
+
+  ── SITUATIONAL FACTORS ──────────────────────────────────────
+
+  PE100 — Physical Environment
+     The external physical conditions in which the operation took place.
+     Includes: adverse weather (IMC, turbulence, icing, gusts, low visibility,
+     wind shear), terrain, lighting, runway/surface conditions, wildlife, FOD.
+     Is there evidence of a physical environmental condition in this narrative?
+
+  PE200 — Tools / Technology
+     Equipment, automation, or interface conditions that affected performance.
+     Includes: automation mode confusion, misleading or failed instruments,
+     inadequate cockpit design, insufficient warnings, HMI deficiencies,
+     equipment malfunction.
+     Is there evidence of a tools or technology condition in this narrative?
+
+  ── PERSONNEL FACTORS ────────────────────────────────────────
+
+  PP100 — Communication, Coordination & Planning
+     Failures in crew communication, coordination, or pre-flight planning.
+     Includes: CRM breakdown, ATC/crew miscommunication, inadequate briefing,
+     poor task allocation, coordination failure, pre-flight planning errors.
+     Is there evidence of a communication, coordination, or planning condition?
+
+  PP200 — Fitness for Duty
+     The operator's failure to be in a safe condition before beginning duty.
+     Includes: violated crew rest requirements, self-medication, alcohol or
+     substance use, known illness not reported, failure to prepare adequately
+     before the flight.
+     Is there evidence of a fitness-for-duty condition in this narrative?
+
+  ── CONDITION OF OPERATORS ───────────────────────────────────
+
+  PC100 — Mental States
+     Adverse psychological or cognitive states during the operation.
+     Includes: loss of situational awareness, channelized attention, distraction,
+     complacency, get-there-itis, overconfidence, task saturation, stress, anxiety.
+     Is there evidence of an adverse mental state in this narrative?
+
+  PC200 — Physiological States
+     Adverse physical or physiological conditions affecting the operator during flight.
+     Includes: fatigue, hypoxia, spatial disorientation, visual illusions,
+     nausea, medication side effects, illness onset during flight.
+     Is there evidence of an adverse physiological state in this narrative?
+
+  PC300 — Physical / Mental Limitations
+     Inherent operator limitations that exceeded the demands of the task.
+     Includes: visual limitations, reaction time limitations, insufficient training
+     for the task, cognitive capacity limits, strength or coordination limitations.
+     Is there evidence of a physical or mental limitation in this narrative?
+
+  Return only valid JSON in this exact format:
+  {
+    "PE100_Physical_Environment":                {"Present": "Yes/No", "Evidence": ""},
+    "PE200_Tools_Technology":                    {"Present": "Yes/No", "Evidence": ""},
+    "PP100_Communication_Coordination_Planning": {"Present": "Yes/No", "Evidence": ""},
+    "PP200_Fitness_for_Duty":                    {"Present": "Yes/No", "Evidence": ""},
+    "PC100_Mental_States":                       {"Present": "Yes/No", "Evidence": ""},
+    "PC200_Physiological_States":                {"Present": "Yes/No", "Evidence": ""},
+    "PC300_Physical_Mental_Limitations":         {"Present": "Yes/No", "Evidence": ""}
+  }
+
+  Narrative:
+  {narrative}
+
+step2_prompt: |
+  You are an HFACS expert. You are given preconditions for unsafe acts extracted
+  from an aviation accident narrative. Based ONLY on these preconditions and Evidence and your
+  HFACS knowledge, predict the unsafe acts classification.
+
+  Preconditions found:
+  {preconditions}
+
+  Predict exactly one of: "AE100 only", "AE200 only", "Both", "anyofthem".
+
+  Return only valid JSON in this exact format:
+  {
+    "Final_Class": "AE100 only/AE200 only/Both/anyofthem",
+    "Codes_Selected": [],
+    "Final_Justification": "",
+    "Confidence": "Low/Medium/High"
+  }
