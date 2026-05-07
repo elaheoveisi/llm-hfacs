@@ -1,7 +1,8 @@
 ﻿llm:
   api_key: ""
   input: GAHFACS_Version3.xlsx
-  prompt: indirect_unsafe_act    # yaml file name (without .yaml) in src/llm/prompts/GHFACS/
+  prompt: summerized_L4
+    # yaml file name (without .yaml) in src/llm/prompts/GHFACS/
   model: gpt-4o-mini
   mode: sync           # sync, batch_submit, batch_retrieve
   batch_id: null       # used only when mode=batch_retrieve
