@@ -10,11 +10,9 @@ from data.dataset import build_processed_dataset
 from utils import skip_run
 from features.svm import svm as run_svm
 from features.ghfacs_svm import ghfacs_svm as run_ghfacs_svm
+from features.ghfacs_svm_nonbalance import ghfacs_svm_nonbalance as run_ghfacs_svm_nonbalance
 from features.ghfacs_rf import ghfacs_rf as run_ghfacs_rf
 from features.ghfacs_bayes import ghfacs_bayes as run_ghfacs_bayes
-from features.ghfacs_bayes_embed import ghfacs_bayes_embed as run_ghfacs_bayes_embed
-from features.ghfacs_svm_embed import ghfacs_svm_embed as run_ghfacs_svm_embed
-from features.ghfacs_rf_embed import ghfacs_rf_embed as run_ghfacs_rf_embed
 from llm.prompts.GHFACS.classify import run as run_classify
 
 with open("configs/config.yaml", "r") as f:
@@ -31,13 +29,14 @@ with skip_run("skip", "svm") as check:
     with check():
         run_svm()
 
-with skip_run("skip", "ghfacs_svm") as check:
+with skip_run("run", "ghfacs_svm") as check:
     with check():
         run_ghfacs_svm()
 
-with skip_run("skip", "ghfacs_rf") as check:
+with skip_run("skip", "ghfacs_svm_nonbalance") as check:
     with check():
-        run_ghfacs_rf()
+        run_ghfacs_svm_nonbalance()
+
 
 with skip_run("skip", "ghfacs_bayes") as check:
     with check():

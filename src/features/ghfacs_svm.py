@@ -10,7 +10,7 @@ from features.utils import (
     make_four_class_target,
 )
 import pandas as pd
-from sklearn.model_selection import train_test_split, GridSearchCV, StratifiedKFold
+from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
 from sklearn.svm import SVC
@@ -53,23 +53,12 @@ def ghfacs_svm():
 
     pipeline = Pipeline([
         ("scaler", StandardScaler()),
-        ("svc", SVC(gamma="scale", probability=False)),
+        ("svc", SVC(C=1, kernel="linear", gamma="scale", probability=False)),
     ])
 
-    param_grid = {
-        "svc__C": [0.01, 0.1, 0.5, 1.0, 2.3, 5.0, 10.0],
-        "svc__kernel": ["linear", "rbf"],
-    }
+    pipeline.fit(X_train, y_train)
 
-    n_splits = min(5, int(y_train.value_counts().min()))
-    cv = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=42)
-    grid = GridSearchCV(pipeline, param_grid, cv=cv, scoring="f1_macro", n_jobs=-1, verbose=1)
-    grid.fit(X_train, y_train)
-
-    print(f"\nBest params: {grid.best_params_}")
-    print(f"Best CV f1_macro: {grid.best_score_:.4f}")
-
-    y_pred = grid.predict(X_test)
+    y_pred = pipeline.predict(X_test)
     classes = ["AE100 only", "AE200 only", "Both", "anyofthem"]
     print("\nTest accuracy:", accuracy_score(y_test, y_pred))
     print("\nConfusion matrix (rows=true, cols=pred):\n",

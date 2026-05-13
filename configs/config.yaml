@@ -1,6 +1,6 @@
 ﻿llm:
   api_key: ""
-  input: GAHFACS_Version3.xlsx
+  input: GAHFACS_Version3_undersampled.xlsx
   prompt: indirect_unsafe_act   # yaml file name (without .yaml) in src/llm/prompts/GHFACS/
   default_prompt: indirect_unsafe_act
   model: gpt-5
