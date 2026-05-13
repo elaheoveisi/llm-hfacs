@@ -43,17 +43,7 @@ with skip_run("skip", "ghfacs_bayes") as check:
     with check():
         run_ghfacs_bayes()
 
-with skip_run("skip", "ghfacs_bayes_embed") as check:
-    with check():
-        run_ghfacs_bayes_embed()
 
-with skip_run("run", "ghfacs_svm_embed") as check:
-    with check():
-        run_ghfacs_svm_embed()
-
-with skip_run("skip", "ghfacs_rf_embed") as check:
-    with check():
-        run_ghfacs_rf_embed()
 
 with skip_run("skip", "classify") as check:
     with check():
