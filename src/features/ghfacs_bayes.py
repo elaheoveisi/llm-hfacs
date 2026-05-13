@@ -64,23 +64,23 @@ def ghfacs_bayes():
     n_classes = len(CLASSES)
 
     with pm.Model():
-        W = pm.Normal("W", mu=0, sigma=1, shape=(n_features, n_classes))
-        b = pm.Normal("b", mu=0, sigma=1, shape=(n_classes,))
+        intercepts = pm.Normal("intercepts", mu=0, sigma=1, shape=(n_classes,))
+        betas = pm.Normal("betas", mu=0, sigma=1, shape=(n_classes, n_features))
 
-        logits = pm.math.dot(X_train_np, W) + b
-        p = pm.Deterministic("p", pm.math.softmax(logits, axis=-1))
+        theta = intercepts + pm.math.dot(X_train_np, betas.T)
+        p = pm.Deterministic("p", pm.math.softmax(theta, axis=-1))
 
         pm.Categorical("y_obs", p=p, observed=y_train_idx)
 
         trace = pm.sample(1000, tune=500, cores=1, random_seed=42, progressbar=True)
 
-    # Posterior predictive on test set via all posterior weight samples
-    W_samples = trace.posterior["W"].values.reshape(-1, n_features, n_classes)  # (S, F, K)
-    b_samples = trace.posterior["b"].values.reshape(-1, n_classes)              # (S, K)
+# Posterior predictive on test set via all posterior weight samples
+    betas_samples = trace.posterior["betas"].values.reshape(-1, n_classes, n_features)  # (S, K, F)
+    intercepts_samples = trace.posterior["intercepts"].values.reshape(-1, n_classes)    # (S, K)
 
     # logits for each posterior sample and each test point: (S, N, K)
-    logits_test = np.einsum("nf,sfk->snk", X_test_np, W_samples) + b_samples[:, np.newaxis, :]
-    pred_samples = logits_test.argmax(axis=-1)  # (S, N)
+    theta_test = np.einsum("nf,skf->snk", X_test_np, betas_samples) + intercepts_samples[:, np.newaxis, :]
+    pred_samples = theta_test.argmax(axis=-1)  # (S, N)
 
     # Point prediction: majority vote across posterior samples
     y_pred_idx = np.array([
