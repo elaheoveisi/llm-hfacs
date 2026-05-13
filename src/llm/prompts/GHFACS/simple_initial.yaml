@@ -1,0 +1,127 @@
+temperature: 0
+
+system_prompt: |
+  You are an expert HFACS aviation safety analyst.
+  Classify accident narratives strictly using evidence explicitly stated in the narrative.
+  Do not infer, assume, or guess beyond what is written.
+  Return only valid JSON. No commentary outside the JSON.
+
+user_prompt_template: |
+  Classify the accident narrative into exactly one of four classes using the definitions below.
+
+  ─── DEFINITIONS ───
+
+  AE100 — Performance / Skill-Based Error
+  The person intended the correct action but failed in execution:
+  lost control, forgot a checklist item, made a physical slip or control error.
+  Key test: they knew what to do, but could not do it correctly.
+
+  AE200 — Judgment / Decision-Making Error
+  The person's plan, choice, or situational assessment was wrong:
+  chose unsuitable conditions, continued past a clear warning, selected an unsafe
+  landing area / route / speed / altitude, or misjudged the environment.
+  Key test: the choice of what to do was wrong before execution failed.
+
+  Both — AE100 and AE200
+  Use only when the narrative describes two genuinely separate acts:
+  a wrong decision AND a distinct execution failure.
+  Both is strict. Do not use it when:
+  - the "decision" is only a reaction or correction within an ongoing execution failure
+  - the only "AE100" act is the crash, overrun, stall, or impact that is the
+    direct physical consequence of the AE200 decision
+  - the only "AE200" act is a routine operational choice (deciding to land, take off,
+    or maneuver) that is wrong only in hindsight because of the execution failure
+  Counterfactual gate: ask "Would the AE100 failure have occurred without the AE200
+  decision?" If No, the failure is a consequence — classify as AE200 only.
+  AE200 gate: ask "Is the decision independently unsafe given the conditions known
+  at the time, not merely wrong because of how execution later failed?" If No,
+  there is no AE200 — classify as AE100 only.
+
+  anyofthem — Neither AE100 nor AE200
+  Use when the cause is external (animal strike, weather, mechanical failure) and
+  no pilot error is explicitly described. Do not infer error from damage alone.
+
+  ─── DERIVATION RULES ───
+
+  1. Decide AE100 independently.
+  2. Decide AE200 independently.
+  3. Derive Final_Class strictly from those two answers:
+     AE100=Yes, AE200=No  → "AE100 only"
+     AE100=No,  AE200=Yes → "AE200 only"
+     AE100=Yes, AE200=Yes → "Both"
+     AE100=No,  AE200=No  → "anyofthem"
+
+  ─── COMMON TRAPS ───
+
+  • Overrun / terrain impact / failure to become airborne caused by a bad decision
+    → consequence of AE200, not a separate AE100. Classify as AE200 only.
+  • Go-around attempt, speed adjustment for gusts, silencing a warning during a
+    developing control problem → reactive acts within AE100, not a separate AE200.
+  • Forgetting / missing a checklist item → AE100 only, unless a separate risky
+    deliberate decision is also described.
+  • Bird, deer, turbulence, mechanical failure, unknown obstacle → anyofthem unless
+    a pilot error is explicitly named.
+  • Physical outcome alone (stall, loss of control, overrun) does not make AE100.
+    If the outcome traces entirely to a prior bad decision, classify as AE200 only.
+  • "The pilot decided to land / take off" is not AE200 unless conditions made
+    that choice clearly unsafe before execution began.
+
+  ─── EXAMPLES ───
+
+  Example A — AE100 only
+  "During landing rollout, the pilot lost directional control. No mechanical failures."
+  AE100: Yes — lost directional control during rollout.
+  AE200: No — no separate wrong plan described.
+
+  Example B — AE200 only
+  "The pilot continued VFR into deteriorating visibility. The airplane struck terrain."
+  AE200: Yes — chose to continue into unsuitable conditions.
+  AE100: No — terrain impact is the consequence of that decision, not a separate slip.
+
+  Example C — Both
+  "The pilot performed a low pass over a highway. During climbout he maintained an
+  excessive angle of attack, lost control, and struck trees."
+  AE200: Yes — low pass over a highway was an unsafe plan.
+  AE100: Yes — excessive angle of attack and loss of control is a separate execution failure.
+  Counterfactual: Would loss of control have occurred without the low pass? Possibly —
+  the climbout error is independent of the location decision. Both confirmed.
+
+  Example D — anyofthem
+  "A deer ran onto the runway and struck the wing. No pilot error described."
+  AE100: No. AE200: No. External cause only.
+
+  Example E — AE100 only (not Both)
+  "During the landing rollout the pilot decided to apply brakes but locked the wheels
+  and veered off the runway."
+  AE200: No — deciding to brake is a routine act, not an unsafe plan.
+  AE100: Yes — locking the wheels is a distinct execution failure.
+  AE200 gate: braking was not independently unsafe; it failed in execution only.
+
+  Example F — AE200 only (not AE100)
+  "The pilot attempted a takeoff with a known tailwind exceeding limits. The aircraft
+  failed to become airborne and overran the runway."
+  AE200: Yes — taking off with an out-of-limits tailwind was an unsafe decision.
+  AE100: No — the overrun is a physical consequence of the decision, not a separate slip.
+  Counterfactual: Would the overrun have occurred without the tailwind decision? No.
+
+  ─── OUTPUT FORMAT ───
+
+  Return only valid JSON:
+
+  {
+    "Q2_AE100_Performance_Skill_Error": {
+      "Final_Answer": "Yes/No",
+      "Short_Explanation": ""
+    },
+    "Q3_AE200_Judgment_Decision_Error": {
+      "Final_Answer": "Yes/No",
+      "Short_Explanation": ""
+    },
+    "Final_Class": "AE100 only / AE200 only / Both / anyofthem",
+    "Codes_Selected": [],
+    "Final_Justification": "",
+    "Confidence": "Low / Medium / High"
+  }
+
+  Narrative:
+  {narrative}

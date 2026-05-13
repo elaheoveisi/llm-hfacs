@@ -1,0 +1,167 @@
+temperature: 0
+
+system_prompt: |
+  You are an expert HFACS aviation safety analyst.
+  Classify strictly using evidence explicitly stated in the text provided.
+  Do not infer, assume, or guess beyond what is written.
+  A category is Present = "Yes" only if the narrative contains a direct, explicit
+  statement of that condition — not a reasonable implication of it.
+  Return only valid JSON. No commentary outside the JSON.
+
+step1_prompt: |
+  Read the accident narrative below. For each of the seven HFACS subcategories
+  under Preconditions for Unsafe Acts, determine whether it is present.
+  Mark Present = "Yes" ONLY when the narrative explicitly states evidence.
+  Do NOT mark Yes if you are only inferring — the text must state it explicitly.
+  Provide a brief quote or paraphrase as Evidence; leave Evidence empty if No.
+
+  ── SITUATIONAL FACTORS ──────────────────────────────────────
+
+  PE100 — Physical Environment
+     The external physical conditions in which the operation took place.
+     Includes: adverse weather (IMC, turbulence, icing, gusts, low visibility,
+     wind shear), terrain, lighting, runway/surface conditions, wildlife, FOD.
+     Do NOT mark Yes for obstacles, traffic, or other aircraft unless the
+     narrative explicitly identifies them as an adverse environmental condition.
+     Is there evidence of a physical environmental condition in this narrative?
+
+     EXAMPLE YES: "Surface weather observations indicated a 50°–70° right crosswind
+       with gusts to 30 knots prevailed about the time of the accident."
+       → Explicit adverse weather condition stated. Mark Yes.
+
+     EXAMPLE NO: "The pilot was concerned with a military helicopter about ¾ of the
+       way down the right side of the runway."
+       → Another aircraft on the runway is an operational conflict, not a physical
+         environmental condition. Mark No.
+
+  PE200 — Tools / Technology
+     Equipment, automation, or interface conditions that affected performance.
+     Includes: automation mode confusion, misleading or failed instruments,
+     inadequate cockpit design, insufficient warnings, HMI deficiencies,
+     equipment malfunction.
+     Do NOT mark Yes simply because equipment is mentioned. Mark Yes only if the
+     narrative explicitly states the equipment failed, malfunctioned, gave
+     incorrect information, or was inadequate/misleading.
+     Is there evidence of a tools or technology condition in this narrative?
+
+     EXAMPLE YES: "The altimeter was found to be reading 200 ft higher than actual
+       altitude due to a calibration error discovered post-accident."
+       → Explicit instrument malfunction causing incorrect information. Mark Yes.
+
+     EXAMPLE NO: "The landing gear warning horn sounded when the throttle was
+       reduced and the pilot increased power and continued in the pattern."
+       → The warning system worked as designed. No malfunction or deficiency stated.
+         Mark No.
+
+  ── PERSONNEL FACTORS ────────────────────────────────────────
+
+  PP100 — Communication, Coordination & Planning
+     Failures in crew communication, coordination, or pre-flight planning.
+     Includes: CRM breakdown, ATC/crew miscommunication, inadequate briefing,
+     poor task allocation, coordination failure, pre-flight planning errors.
+     Do NOT mark Yes for routine cockpit conversations or normal ATC contact.
+     Mark Yes only if the narrative explicitly states a failure, breakdown,
+     or error in communication, coordination, or planning.
+     Is there evidence of a communication, coordination, or planning condition?
+
+     EXAMPLE YES: "The pilot reported that he was en route to acquire additional
+       fuel but ran out of fuel before reaching the destination."
+       → Explicit pre-flight planning failure: inadequate fuel planning. Mark Yes.
+
+     EXAMPLE NO: "The pilot receiving instruction and the flight instructor were
+       having a conversation about when to extend the landing gear."
+       → A normal training discussion between crew members. No failure or breakdown
+         stated. Mark No.
+
+  PP200 — Fitness for Duty
+     The operator's physical or mental readiness BEFORE beginning the flight.
+     Includes: violated crew rest requirements, self-medication, alcohol or
+     substance use, known illness not reported, known impairment before flight.
+     Do NOT mark Yes for regulatory or certification violations (flying without
+     endorsements, expired medical). Do NOT confuse with PC200 (physiological
+     states that develop DURING flight such as fatigue or disorientation).
+     Is there evidence of a fitness-for-duty condition in this narrative?
+
+     EXAMPLE YES: "The toxicology report revealed the pilot had a blood alcohol
+       content of 0.10 at the time of the accident."
+       → Explicit substance impairment before the flight. Mark Yes.
+
+     EXAMPLE NO: "The student pilot did not have any required student pilot solo
+       endorsements for solo flight."
+       → A certification/authorization issue, not a physical or mental readiness
+         condition. Mark No.
+
+  ── CONDITION OF OPERATORS ───────────────────────────────────
+
+  PC100 — Mental States
+     Adverse psychological or cognitive states during the operation.
+     Includes: loss of situational awareness, channelized attention, distraction,
+     complacency, get-there-itis, overconfidence, task saturation.
+     Do NOT mark Yes for emotional reactions (fear, surprise) or post-hoc
+     pilot self-criticism. The narrative must explicitly describe a cognitive
+     failure state — not simply an error or a negative outcome.
+     Is there evidence of an adverse mental state in this narrative?
+
+     EXAMPLE YES: "While focusing on the motorcycle on the taxiway, the right
+       wing impacted several garbage cans."
+       → Explicit channelized attention stated: pilot's focus diverted. Mark Yes.
+
+     EXAMPLE NO: "The pilot thought that applying less rudder and brake pressure
+       might have prevented the accident."
+       → Post-hoc pilot reflection on technique; no adverse mental state during
+         the operation described. Mark No.
+
+  PC200 — Physiological States
+     Adverse physical or physiological conditions affecting the operator
+     DURING the flight.
+     Includes: fatigue, hypoxia, spatial disorientation, visual illusions,
+     nausea, medication side effects, illness onset during flight.
+     Do NOT confuse with PP200 (pre-flight impairment) or PC300 (permanent
+     limitations). Mark Yes only if the physiological condition emerged or
+     was present during the flight itself.
+     Is there evidence of an adverse physiological state in this narrative?
+
+     EXAMPLE YES: "The pilot reported experiencing vertigo during the instrument
+       approach, which caused him to misread his attitude."
+       → Explicit spatial disorientation during flight. Mark Yes.
+
+     EXAMPLE NO: "The pilot reported he was tired from a long work week before
+       the flight."
+       → Fatigue reported as a pre-flight condition; classify under PP200, not
+         PC200. Mark No for PC200.
+
+  PC300 — Physical / Mental Limitations
+     Inherent operator limitations that exceeded the demands of the task.
+     Includes: insufficient training for the specific task, inadequate
+     experience for conditions encountered, physical inability to perform
+     a required control input.
+     Do NOT mark Yes for momentary inattention, forgetting, or distraction
+     (those are PC100). Do NOT mark Yes for airframe/design constraints.
+     The narrative must explicitly state the operator lacked the capability
+     or training required for the task.
+     Is there evidence of a physical or mental limitation in this narrative?
+
+     EXAMPLE YES: "The solo student pilot reported he felt the airplane was higher
+       above the runway than his actual altitude and descended in a nose-low
+       attitude, causing a hard landing."
+       → Explicit perceptual limitation (visual illusion) exceeding student's
+         capability. Mark Yes.
+
+     EXAMPLE NO: "The pilot had forgotten to reset the circuit breakers before
+       the flight."
+       → A memory lapse or omission, not an inherent capability limitation.
+         Mark No.
+
+  Return only valid JSON in this exact format:
+  {
+    "PE100_Physical_Environment":                {"Present": "Yes/No", "Evidence": ""},
+    "PE200_Tools_Technology":                    {"Present": "Yes/No", "Evidence": ""},
+    "PP100_Communication_Coordination_Planning": {"Present": "Yes/No", "Evidence": ""},
+    "PP200_Fitness_for_Duty":                    {"Present": "Yes/No", "Evidence": ""},
+    "PC100_Mental_States":                       {"Present": "Yes/No", "Evidence": ""},
+    "PC200_Physiological_States":                {"Present": "Yes/No", "Evidence": ""},
+    "PC300_Physical_Mental_Limitations":         {"Present": "Yes/No", "Evidence": ""}
+  }
+
+  Narrative:
+  {narrative}

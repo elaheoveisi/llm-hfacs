@@ -1,23 +1,44 @@
 ﻿llm:
   api_key: ""
   input: GAHFACS_Version3.xlsx
-  prompt: summerized_L4
-    # yaml file name (without .yaml) in src/llm/prompts/GHFACS/
-  model: gpt-4o-mini
+  prompt: indirect_unsafe_act   # yaml file name (without .yaml) in src/llm/prompts/GHFACS/
+  default_prompt: indirect_unsafe_act
+  model: gpt-5
   mode: sync           # sync, batch_submit, batch_retrieve
   batch_id: null       # used only when mode=batch_retrieve
-  limit: 100    # null for all rows
+  limit: null # null for all rows
   compact: false
   evaluate: true            # print accuracy + confusion matrix after classification
   retry_wait: 60       # seconds
   max_retries: 3
   workers: 20          # concurrent API requests
+  narrative_column: narr_accf
+  classes:
+    - "AE100 only"
+    - "AE200 only"
+    - "Both"
+    - "anyofthem"
+  json_models:
+    - gpt-4o
+    - gpt-4o-mini
+  no_temperature_models:
+    - gpt-5
+  output_columns:
+    - Final_Answer
+    - Final_Class
+    - Final_HFACS_Code
+    - Codes_Selected
+    - Final_Justification
+    - Confidence
+  ground_truth_columns: [AE100, AE200]
 
 paths:
+  ghfacs_data_dir: './data/GHFACS'
   raw_data_dir: './data/raw'
   processed_csv: './data/intermediate/processed_output.csv'
   processed_excel: './data/intermediate/processed_output.xlsx'
   svm_output_dir: './data/processed/svm'
+  ghfacs_svm_output_dir: './data/processed/ghfacs_svm'
   dag_output_dir: './data/processed'
 
 source_columns:
@@ -120,6 +141,9 @@ hfacs_categories:
     'Anomaly_Deviation / Discrepancy - Procedural Weight And Balance': 4
     'Anomaly_Flight Deck / Cabin / Aircraft Event Passenger Misconduct': 2
     
+ghfacs:
+  precondition_cols: [PE100, PE200, PP100, PT100, PC100, PC200, PC300]
+
 dag:
   sink_nodes: ['Error', 'Violation']
   score_func: 'local_score_BDeu'

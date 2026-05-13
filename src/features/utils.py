@@ -114,3 +114,17 @@ def make_three_class_target_from_config(
     viol_weights = config["hfacs_categories"]["Violation"]
     return make_three_class_target(df, error_weights, viol_weights)
 
+
+def make_four_class_target(df: pd.DataFrame) -> pd.Series:
+    """Build 4-class target from AE100/AE200 ground-truth columns.
+
+    Returns string labels: 'AE100 only', 'AE200 only', 'Both', 'anyofthem'.
+    """
+    ae100 = df["AE100"].notna()
+    ae200 = df["AE200"].notna()
+    y = pd.Series("anyofthem", index=df.index, dtype=object)
+    y[ae100 & ~ae200] = "AE100 only"
+    y[~ae100 & ae200] = "AE200 only"
+    y[ae100 & ae200] = "Both"
+    return y
+

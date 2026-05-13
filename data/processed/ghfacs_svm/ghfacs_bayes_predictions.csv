@@ -1,0 +1,21 @@
+y_true,y_pred
+AE100 only,AE100 only
+AE200 only,AE100 only
+AE100 only,AE100 only
+Both,anyofthem
+AE100 only,AE100 only
+AE100 only,AE100 only
+AE100 only,AE100 only
+anyofthem,anyofthem
+AE100 only,AE100 only
+AE100 only,anyofthem
+AE100 only,AE100 only
+anyofthem,anyofthem
+AE100 only,AE100 only
+AE100 only,AE100 only
+AE100 only,anyofthem
+AE100 only,AE100 only
+AE200 only,AE200 only
+AE100 only,AE100 only
+AE200 only,anyofthem
+AE100 only,AE100 only
