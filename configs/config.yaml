@@ -1,12 +1,12 @@
 ﻿llm:
   api_key: ""
   input: GAHFACS_Version3_undersampled.xlsx
-  prompt: indirect_unsafe_act   # yaml file name (without .yaml) in src/llm/prompts/GHFACS/
-  default_prompt: indirect_unsafe_act
+  prompt: L3   # yaml file name (without .yaml) in src/llm/prompts/GHFACS/
+  default_prompt: L3
   model: gpt-5
   mode: sync           # sync, batch_submit, batch_retrieve
   batch_id: null       # used only when mode=batch_retrieve
-  limit: null # null for all rows
+  limit: 200 # null for all rows
   compact: false
   evaluate: true            # print accuracy + confusion matrix after classification
   retry_wait: 60       # seconds
