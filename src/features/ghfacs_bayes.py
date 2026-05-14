@@ -8,6 +8,7 @@ from features.utils import (
     ensure_dir,
     load_config,
     make_four_class_target,
+    read_data,
 )
 import numpy as np
 import pandas as pd
@@ -26,7 +27,7 @@ def ghfacs_bayes():
 
     data_dir = config['paths']['ghfacs_data_dir']
     input_file = config['llm']['input']
-    df = pd.read_excel(os.path.join(data_dir, input_file))
+    df = read_data(os.path.join(data_dir, input_file))
     limit = config['llm'].get('limit')
     if limit:
         df = df.head(limit)
@@ -74,7 +75,6 @@ def ghfacs_bayes():
 
         trace = pm.sample(1000, tune=500, cores=1, random_seed=42, progressbar=True)
 
-# Posterior predictive on test set via all posterior weight samples
     betas_samples = trace.posterior["betas"].values.reshape(-1, n_classes, n_features)  # (S, K, F)
     intercepts_samples = trace.posterior["intercepts"].values.reshape(-1, n_classes)    # (S, K)
 

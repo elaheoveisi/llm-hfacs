@@ -8,6 +8,7 @@ from features.utils import (
     ensure_dir,
     load_config,
     make_four_class_target,
+    read_data,
 )
 import pandas as pd
 from sklearn.model_selection import train_test_split
@@ -25,7 +26,7 @@ def ghfacs_svm():
 
     data_dir = config['paths']['ghfacs_data_dir']
     input_file = config['llm']['input']
-    df = pd.read_excel(os.path.join(data_dir, input_file))
+    df = read_data(os.path.join(data_dir, input_file))
 
     precondition_cols = config['ghfacs']['precondition_cols']
     feature_cols = [c for c in precondition_cols if c in df.columns]

@@ -154,13 +154,13 @@ step1_prompt: |
 
   Return only valid JSON in this exact format:
   {
-    "PE100_Physical_Environment":                {"Present": "Yes/No", "Evidence": ""},
-    "PE200_Tools_Technology":                    {"Present": "Yes/No", "Evidence": ""},
-    "PP100_Communication_Coordination_Planning": {"Present": "Yes/No", "Evidence": ""},
-    "PP200_Fitness_for_Duty":                    {"Present": "Yes/No", "Evidence": ""},
-    "PC100_Mental_States":                       {"Present": "Yes/No", "Evidence": ""},
-    "PC200_Physiological_States":                {"Present": "Yes/No", "Evidence": ""},
-    "PC300_Physical_Mental_Limitations":         {"Present": "Yes/No", "Evidence": ""}
+    "PE100": {"Present": "Yes/No", "Evidence": ""},
+    "PE200": {"Present": "Yes/No", "Evidence": ""},
+    "PP100": {"Present": "Yes/No", "Evidence": ""},
+    "PP200": {"Present": "Yes/No", "Evidence": ""},
+    "PC100": {"Present": "Yes/No", "Evidence": ""},
+    "PC200": {"Present": "Yes/No", "Evidence": ""},
+    "PC300": {"Present": "Yes/No", "Evidence": ""}
   }
 
   Narrative:

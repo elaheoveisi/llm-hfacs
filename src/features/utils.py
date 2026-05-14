@@ -15,6 +15,13 @@ def ensure_dir(path: str) -> None:
     os.makedirs(path, exist_ok=True)
 
 
+def read_data(path: str) -> pd.DataFrame:
+    path = str(path)
+    if path.lower().endswith(".csv"):
+        return pd.read_csv(path)
+    return pd.read_excel(path, engine="openpyxl")
+
+
 def load_dataset(config: dict) -> pd.DataFrame:
     return pd.read_csv(config['paths']['processed_csv'])
 
