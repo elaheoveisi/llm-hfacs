@@ -4,7 +4,6 @@ from pathlib import Path
 import pandas as pd
 import yaml
 
-
 DEFAULT_PRECONDITION_COLUMNS = [
     "PE100",
     "PE200",
@@ -21,7 +20,7 @@ PRECONDITION_GROUPS = {
     "Condition_of_Operators": ["PC100", "PC200", "PC300"],
 }
 
-CLASS_ORDER = ["AE100 only", "AE200 only", "Both", "anyofthem"]
+CLASS_ORDER = ["AE100 only", "AE200 only", "Both", "None"]
 
 
 def repo_root() -> Path:
@@ -49,7 +48,7 @@ def derive_four_class(df: pd.DataFrame) -> pd.Series:
     ae100 = is_present(df["AE100"])
     ae200 = is_present(df["AE200"])
 
-    labels = pd.Series("anyofthem", index=df.index)
+    labels = pd.Series("None", index=df.index)
     labels.loc[ae100 & ~ae200] = "AE100 only"
     labels.loc[~ae100 & ae200] = "AE200 only"
     labels.loc[ae100 & ae200] = "Both"
@@ -62,10 +61,14 @@ def existing_columns(df: pd.DataFrame, columns: list[str]) -> list[str]:
 
 def compute_counts(df: pd.DataFrame) -> dict[str, pd.DataFrame]:
     precondition_cols = existing_columns(df, DEFAULT_PRECONDITION_COLUMNS)
-    precondition_counts = pd.Series(
-        {col: is_present(df[col]).sum() for col in precondition_cols},
-        name="Row_Count",
-    ).rename_axis("Precondition_Code").reset_index()
+    precondition_counts = (
+        pd.Series(
+            {col: is_present(df[col]).sum() for col in precondition_cols},
+            name="Row_Count",
+        )
+        .rename_axis("Precondition_Code")
+        .reset_index()
+    )
 
     class_counts = (
         derive_four_class(df)
@@ -162,10 +165,7 @@ def build_eda(df: pd.DataFrame) -> dict[str, pd.DataFrame]:
     ).reindex(columns=CLASS_ORDER, fill_value=0)
 
     precondition_by_class = pd.DataFrame(
-        {
-            cls: present.loc[four_class == cls].sum().astype(int)
-            for cls in CLASS_ORDER
-        }
+        {cls: present.loc[four_class == cls].sum().astype(int) for cls in CLASS_ORDER}
     )
     precondition_by_class.insert(0, "Total", present.sum().astype(int))
 
@@ -214,7 +214,9 @@ def print_report(tables: dict[str, pd.DataFrame], total: int) -> None:
     print(tables["precondition_by_class"].to_string())
 
 
-def save_tables(tables: dict[str, pd.DataFrame], output_dir: Path, prefix: str = "eda_") -> None:
+def save_tables(
+    tables: dict[str, pd.DataFrame], output_dir: Path, prefix: str = "eda_"
+) -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
     for name, table in tables.items():
         table.to_csv(output_dir / f"{prefix}{name}.csv", encoding="utf-8-sig")
@@ -256,7 +258,11 @@ def main() -> None:
     config_path = args.config.resolve()
     config = load_config(config_path)
 
-    input_path = args.input.resolve() if args.input else default_input_from_config(config, config_path)
+    input_path = (
+        args.input.resolve()
+        if args.input
+        else default_input_from_config(config, config_path)
+    )
     df = read_table(input_path)
 
     print(f"Input file: {input_path}")

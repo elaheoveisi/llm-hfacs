@@ -1,11 +1,11 @@
 temperature: 0
- 
+
 system_prompt: |
   You are an expert HFACS aviation safety analyst.
   Classify strictly using evidence explicitly stated in the text provided.
   Do not infer, assume, or guess beyond what is written.
   Return only valid JSON. No commentary outside the JSON.
- 
+
 step1_prompt: |
   Read the accident narrative below. For each of the seven HFACS subcategories
   under Preconditions for Unsafe Acts, determine whether it is present.
@@ -17,66 +17,66 @@ step1_prompt: |
   Finally, extract the narrative facts that are directly relevant to unsafe-act
   classification:
   - Unsafe_Act_Relevant_Facts: short factual phrases from the narrative that
-    may help distinguish AE100, AE200, Both, or anyofthem.
+    may help distinguish AE100, AE200, Both, or Neither.
   - Explicit_Decision_Evidence: evidence of a clearly stated unsafe choice,
     plan, judgment, continuation, or risk acceptance; leave empty if absent.
   - Explicit_Execution_Evidence: evidence of a clearly stated execution,
     handling, checklist, control, slip, lapse, or skill-based failure; leave
     empty if absent.
- 
+
   ── SITUATIONAL FACTORS ──────────────────────────────────────
- 
+
   PE100 — Physical Environment
      The external physical conditions in which the operation took place.
      Includes: adverse weather (IMC, turbulence, icing, gusts, low visibility,
      wind shear), terrain, lighting, runway/surface conditions, wildlife, FOD.
      Is there evidence of a physical environmental condition in this narrative?
- 
+
   PE200 — Tools / Technology
      Equipment, automation, or interface conditions that affected performance.
      Includes: automation mode confusion, misleading or failed instruments,
      inadequate cockpit design, insufficient warnings, HMI deficiencies,
      equipment malfunction.
      Is there evidence of a tools or technology condition in this narrative?
- 
+
   ── PERSONNEL FACTORS ────────────────────────────────────────
- 
+
   PP100 — Communication, Coordination & Planning
      Failures in crew communication, coordination, or pre-flight planning.
      Includes: CRM breakdown, ATC/crew miscommunication, inadequate briefing,
      poor task allocation, coordination failure, pre-flight planning errors.
      Is there evidence of a communication, coordination, or planning condition?
- 
+
   PP200 — Fitness for Duty
      The operator's failure to be in a safe condition before beginning duty.
      Includes: violated crew rest requirements, self-medication, alcohol or
      substance use, known illness not reported, failure to prepare adequately
      before the flight.
      Is there evidence of a fitness-for-duty condition in this narrative?
- 
+
   ── CONDITION OF OPERATORS ───────────────────────────────────
- 
+
   PC100 — Mental States
      Adverse psychological or cognitive states during the operation.
      Includes: loss of situational awareness, channelized attention, distraction,
      complacency, get-there-itis, overconfidence, task saturation, stress, anxiety.
      Is there evidence of an adverse mental state in this narrative?
- 
+
   PC200 — Physiological States
      Adverse physical or physiological conditions affecting the operator during flight.
      Includes: fatigue, hypoxia, spatial disorientation, visual illusions,
      nausea, medication side effects, illness onset during flight.
      Is there evidence of an adverse physiological state in this narrative?
- 
+
   PC300 — Physical / Mental Limitations
      Inherent operator limitations that exceeded the demands of the task.
      Includes: visual limitations, reaction time limitations, insufficient training
      for the task, cognitive capacity limits, strength or coordination limitations.
      Is there evidence of a physical or mental limitation in this narrative?
- 
+
   ── BOUNDARY EXAMPLES: PE200 · PC100 · PC300 ─────────────────
   Use these to resolve ambiguous cases before marking Present/No.
- 
+
   EXAMPLE A — PE200 Yes · PC100 No · PC300 No
   Narrative: "During cruise the airspeed indicator began displaying erratic readings.
   The pilot cross-checked with GPS groundspeed but the instrument continued to
@@ -84,7 +84,7 @@ step1_prompt: |
   PE200 = Yes  ("airspeed indicator began displaying erratic readings" — equipment malfunction)
   PC100 = No   (pilot responded methodically; no fixation, distraction, or SA loss stated)
   PC300 = No   (task was within pilot capability; the instrument itself was the source of error)
- 
+
   EXAMPLE B — PC100 Yes · PE200 No · PC300 No
   Narrative: "The instructor became fixated on completing the training maneuver despite
   worsening turbulence. When the co-pilot pointed out the deteriorating conditions,
@@ -92,7 +92,7 @@ step1_prompt: |
   PC100 = Yes  ("became fixated" — channelized attention; "dismissed the concern" — get-there-itis)
   PE200 = No   (no equipment or automation issue; the aircraft systems were functioning normally)
   PC300 = No   (experienced instructor; the limitation was attentional, not a capability gap)
- 
+
   EXAMPLE C — PC300 Yes · PC100 No · PE200 No
   Narrative: "The student pilot, with 18 total flight hours, attempted a short-field
   landing in a 15-knot crosswind. The pilot had not yet received formal crosswind
@@ -100,7 +100,7 @@ step1_prompt: |
   PC300 = Yes  ("had not yet received formal crosswind training" — task exceeded training level)
   PC100 = No   (no fixation, overconfidence, or complacency stated; pilot attempted in good faith)
   PE200 = No   (no equipment malfunction; the aircraft was serviceable)
- 
+
   EXAMPLE D — PE200 Yes · PC100 Yes · PC300 No
   Narrative: "The GPWS issued a terrain warning but the crew silenced it, assuming
   it was a nuisance alert as on a prior leg. Fixated on completing the approach,
@@ -108,7 +108,7 @@ step1_prompt: |
   PE200 = Yes  ("assuming it was a nuisance alert" — HMI distrust / automation confusion)
   PC100 = Yes  ("Fixated on completing the approach" — channelized attention; suppressed valid warning)
   PC300 = No   (experienced crew; task was within their normal capability)
- 
+
   EXAMPLE E — PC300 Yes · PC100 Yes · PE200 No
   Narrative: "The private pilot, certificated six months earlier with minimum hours,
   attempted IFR flight into actual IMC without having logged any actual instrument
@@ -117,14 +117,14 @@ step1_prompt: |
   PC300 = Yes  ("without having logged any actual instrument time since certification")
   PC100 = Yes  ("Confident the conditions were manageable" — overconfidence)
   PE200 = No   (instruments functioned normally; no equipment issue stated)
- 
+
   BOUNDARY RULES (apply after reading examples above):
   • If the equipment itself failed or misled → PE200.  If the pilot misread working equipment → PC100 or PC300.
   • If the pilot's adverse state arose during the flight → PC100 or PC200.  If they lacked the underlying skill/capacity before the flight → PC300.
   • PC100 and PC300 can both be Yes: a pilot with insufficient training (PC300) who also became overconfident (PC100).
   • PC200 (Physiological States) requires an explicit physical symptom during flight (fatigue, hypoxia, spatial disorientation, visual illusion). Do NOT infer fatigue from a long duty day alone.
   • PP200 (Fitness for Duty) requires a pre-flight fitness failure (substance use, violated rest, known illness). Fatigue discovered in-flight is PC200, not PP200.
- 
+
   Return only valid JSON in this exact format:
   {
     "Rewritten_Narrative": "",
@@ -139,20 +139,20 @@ step1_prompt: |
     "PC200_Physiological_States":                {"Present": "Yes/No", "Evidence": ""},
     "PC300_Physical_Mental_Limitations":         {"Present": "Yes/No", "Evidence": ""}
   }
- 
+
   Narrative:
   {narrative}
- 
+
 step2_prompt: |
   You are an HFACS expert. You are given a rewritten accident narrative and
   preconditions for unsafe acts extracted from the same aviation accident
   narrative. Based ONLY on the rewritten narrative, the extracted preconditions,
   the Evidence fields, and your HFACS knowledge, predict the unsafe acts
   classification.
- 
+
   Input JSON from step 1:
   {preconditions}
- 
+
   Class definitions:
   - AE100 = Performance / Skill-Based Error. Use AE100 when the person intended
     the correct action but failed in execution, such as a handling error, slip,
@@ -165,8 +165,8 @@ step2_prompt: |
     speed, altitude, landing area, or maneuver.
     Key test: the choice of what to do was wrong before execution failed.
   - Both = AE100 and AE200 are both explicitly supported by distinct evidence.
-  - anyofthem = neither AE100 nor AE200 is explicitly supported.
- 
+  - Neither = neither AE100 nor AE200 is explicitly supported.
+
   Decision rules:
   1. Use the Rewritten_Narrative to identify unsafe acts directly described in
      the accident sequence.
@@ -220,7 +220,7 @@ step2_prompt: |
     object after a wrong site/route/weather decision is usually AE200 only, not
     Both, when it is just the consequence of the wrong decision.
   - Bird strike, animal strike, unavoidable external obstacle, turbulence/gust
-    encounter, or mechanical failure is anyofthem unless the narrative
+    encounter, or mechanical failure is Neither unless the narrative
     explicitly describes a human execution error or decision error.
 
   Examples to apply by analogy:
@@ -233,7 +233,7 @@ step2_prompt: |
   - Both: "The pilot chose to land on a road. During the landing, he used too
     much brake, lost directional control, and the airplane went off the road."
     Wrong landing-location decision plus distinct braking/control failure.
-  - anyofthem: "During initial climb, a bird struck the leading edge of the
+  - Neither: "During initial climb, a bird struck the leading edge of the
     wing and substantially damaged the airplane." External event; no human
     error described.
 
@@ -244,16 +244,14 @@ step2_prompt: |
      - AE100 Yes and AE200 No -> "AE100 only"
      - AE100 No and AE200 Yes -> "AE200 only"
      - AE100 Yes and AE200 Yes -> "Both"
-     - AE100 No and AE200 No -> "anyofthem"
+     - AE100 No and AE200 No -> "Neither"
 
-  Predict exactly one of: "AE100 only", "AE200 only", "Both", "anyofthem".
- 
+  Predict exactly one of: "AE100 only", "AE200 only", "Both", "Neither".
+
   Return only valid JSON in this exact format:
   {
-    "Final_Class": "AE100 only/AE200 only/Both/anyofthem",
+    "Final_Class": "AE100 only/AE200 only/Both/None",
     "Codes_Selected": [],
     "Final_Justification": "",
     "Confidence": "Low/Medium/High"
   }
- 
- 

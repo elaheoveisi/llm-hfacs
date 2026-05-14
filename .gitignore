@@ -110,16 +110,10 @@ ENV/
 # IDE settings
 .vscode/
 .idea/
-<<<<<<< HEAD
 tempCodeRunnerFile.*
 
 # Data folder
-#data/*
-=======
-
-# Data folder
 data/*
->>>>>>> 388f7934f8c5fe9ca141aa720e8314d4be6d11e3
 
 # Config
 configs/config.yaml

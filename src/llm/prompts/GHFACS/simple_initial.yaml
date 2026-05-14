@@ -37,7 +37,7 @@ user_prompt_template: |
   at the time, not merely wrong because of how execution later failed?" If No,
   there is no AE200 — classify as AE100 only.
 
-  anyofthem — Neither AE100 nor AE200
+  Neither — Neither AE100 nor AE200
   Use when the cause is external (animal strike, weather, mechanical failure) and
   no pilot error is explicitly described. Do not infer error from damage alone.
 
@@ -49,7 +49,7 @@ user_prompt_template: |
      AE100=Yes, AE200=No  → "AE100 only"
      AE100=No,  AE200=Yes → "AE200 only"
      AE100=Yes, AE200=Yes → "Both"
-     AE100=No,  AE200=No  → "anyofthem"
+     AE100=No,  AE200=No  → "Neither"
 
   ─── COMMON TRAPS ───
 
@@ -59,7 +59,7 @@ user_prompt_template: |
     developing control problem → reactive acts within AE100, not a separate AE200.
   • Forgetting / missing a checklist item → AE100 only, unless a separate risky
     deliberate decision is also described.
-  • Bird, deer, turbulence, mechanical failure, unknown obstacle → anyofthem unless
+  • Bird, deer, turbulence, mechanical failure, unknown obstacle → Neither unless
     a pilot error is explicitly named.
   • Physical outcome alone (stall, loss of control, overrun) does not make AE100.
     If the outcome traces entirely to a prior bad decision, classify as AE200 only.
@@ -86,7 +86,7 @@ user_prompt_template: |
   Counterfactual: Would loss of control have occurred without the low pass? Possibly —
   the climbout error is independent of the location decision. Both confirmed.
 
-  Example D — anyofthem
+  Example D — Neither
   "A deer ran onto the runway and struck the wing. No pilot error described."
   AE100: No. AE200: No. External cause only.
 
@@ -117,7 +117,7 @@ user_prompt_template: |
       "Final_Answer": "Yes/No",
       "Short_Explanation": ""
     },
-    "Final_Class": "AE100 only / AE200 only / Both / anyofthem",
+    "Final_Class": "AE100 only / AE200 only / Both / Neither",
     "Codes_Selected": [],
     "Final_Justification": "",
     "Confidence": "Low / Medium / High"

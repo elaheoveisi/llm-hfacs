@@ -7,7 +7,6 @@ import pandas as pd
 HFACS_ORDER = [
     # Level 4 — Organizational Influences
     [
-        
         "Organizational_Climate",
         "Resource_Management/Organizational_Process",
     ],
