@@ -11,6 +11,7 @@ from sklearn.model_selection import train_test_split
 from features.balancing import balance_features_labels
 from features.utils import (
     ensure_dir,
+    load_dataset,
     make_four_class_target,
 )
 
@@ -23,7 +24,7 @@ def ghfacs_bayes(config):
 
     data_dir = config["paths"]["ghfacs_data_dir"]
     input_file = config["llm"]["input"]
-    df = pd.read_excel(os.path.join(data_dir, input_file))
+    df = load_dataset(os.path.join(data_dir, input_file))
     limit = config["llm"].get("limit")
     if limit:
         df = df.head(limit)

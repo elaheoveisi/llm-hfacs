@@ -18,7 +18,12 @@ def ensure_dir(path: str) -> None:
 
 
 def load_dataset(path) -> pd.DataFrame:
-    return pd.read_csv(path)
+    for enc in ("utf-8", "cp1252", "latin-1"):
+        try:
+            return pd.read_csv(path, encoding=enc)
+        except UnicodeDecodeError:
+            continue
+    raise ValueError(f"Could not decode {path} with utf-8, cp1252, or latin-1")
 
 
 def get_hfacs_feature_cols(config: dict) -> List[str]:

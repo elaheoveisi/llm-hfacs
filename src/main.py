@@ -29,14 +29,14 @@ with skip_run("skip", "svm") as check, check():
     df = load_dataset(config["paths"]["undersampled_csv"])
     run_svm(config, df)
 
-with skip_run("run", "ghfacs_svm") as check, check():
+with skip_run("skip", "ghfacs_svm") as check, check():
     df = load_dataset(config["paths"]["undersampled_csv"])
     run_ghfacs_svm(config, df)
 
 with skip_run("skip", "ghfacs_svm_nonbalance") as check, check():
     run_ghfacs_svm_nonbalance(config)
 
-with skip_run("skip", "ghfacs_bayes") as check, check():
+with skip_run("run", "ghfacs_bayes") as check, check():
     run_ghfacs_bayes(config)
 
 with skip_run("skip", "classify") as check, check():
