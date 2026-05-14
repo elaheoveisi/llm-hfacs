@@ -25,14 +25,16 @@ def balance_features_labels(
     return combined.drop(columns="_y"), combined["_y"]
 
 
-"""This function takes your feature table X and label column y,
- temporarily combines them into one DataFrame by adding y as
-   a new column called _y, then calls balance_undersample()
-     to make each class in _y have the same number of rows by
-       randomly removing extra rows from larger classes. 
-       After balancing, it separates the data again: 
-       it returns the balanced features by dropping _y, 
-       and returns the balanced labels from combined["_y"]. 
-       The reason it combines them first is to make sure that
-         when rows are removed during undersampling,
-           the features and labels stay matched correctly."""
+def balance_and_report(
+    X_train: pd.DataFrame, y_train: pd.Series
+) -> Tuple[pd.DataFrame, pd.Series]:
+    print("\nClass distribution before balancing (train only):")
+    for cls, count in y_train.value_counts().sort_index().items():
+        print(f"  Class {cls}: {count} cases")
+    X_train, y_train = balance_features_labels(X_train, y_train)
+    print("\nClass distribution after balancing (train only):")
+    for cls, count in y_train.value_counts().sort_index().items():
+        print(f"  Class {cls}: {count} cases")
+    return X_train, y_train
+
+

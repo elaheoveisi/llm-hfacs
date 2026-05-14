@@ -42,6 +42,7 @@ paths:
   svm_output_dir: 'data/processed/svm'
   ghfacs_svm_output_dir: 'data/processed/ghfacs_svm'
   dag_output_dir: 'data/processed'
+  eda_output_dir: 'data/intermediate'
 
 source_columns:
   Anomaly: 'Events_Anomaly'
@@ -151,3 +152,35 @@ ghfacs_dag:
 
 svm:
   tie_break: 'error'
+
+models:
+  random_state: 42
+  test_size: 0.2
+
+  svm:
+    C: 2.3
+    kernel: linear
+    gamma: scale
+    test_size: 0.15
+
+  ghfacs_svm:
+    C: 1
+    kernel: rbf
+    gamma: scale
+
+  ghfacs_svm_nonbalance:
+    C: 2.3
+    kernel: linear
+    gamma: scale
+
+  ghfacs_rf:
+    n_estimators: [100, 200, 500]
+    max_depth: [null, 5, 10, 20]
+    min_samples_split: [2, 5, 10]
+    max_features: [sqrt, log2]
+    cv_splits: 5
+
+  ghfacs_bayes:
+    n_samples: 1000
+    tune: 500
+    cores: 1
