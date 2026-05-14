@@ -6,9 +6,9 @@
   model: gpt-5
   mode: sync           # sync, batch_submit, batch_retrieve
   batch_id: null       # used only when mode=batch_retrieve
-  limit: 200 # null for all rows
+  limit: 100 # null for all rows
   compact: false
-  evaluate: true            # print accuracy + confusion matrix after classification
+  evaluate: false           # L3 outputs precondition cols, not Final_Class/Final_HFACS_Code
   retry_wait: 60       # seconds
   max_retries: 3
   workers: 20          # concurrent API requests
@@ -40,6 +40,7 @@ paths:
   svm_output_dir: './data/processed/svm'
   ghfacs_svm_output_dir: './data/processed/ghfacs_svm'
   dag_output_dir: './data/processed'
+  ghfacs_dag_output_dir: './data/processed/ghfacs_dag'
 
 source_columns:
   Anomaly: 'Events_Anomaly'
@@ -144,8 +145,11 @@ hfacs_categories:
 ghfacs:
   precondition_cols: [PE100, PE200, PP100, PT100, PC100, PC200, PC300]
 
-dag:
-  sink_nodes: ['Error', 'Violation']
+
+
+ghfacs_dag:
+  nodes: [PE100, PE200, PP100, PT100, PC100, PC200, PC300, AE100, AE200]
+  sink_nodes: [AE100, AE200]
   score_func: 'local_score_BDeu'
   max_indegree: null
 

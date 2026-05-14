@@ -11,8 +11,8 @@ from utils import skip_run
 from features.svm import svm as run_svm
 from features.ghfacs_svm import ghfacs_svm as run_ghfacs_svm
 from features.ghfacs_svm_nonbalance import ghfacs_svm_nonbalance as run_ghfacs_svm_nonbalance
-from features.ghfacs_rf import ghfacs_rf as run_ghfacs_rf
 from features.ghfacs_bayes import ghfacs_bayes as run_ghfacs_bayes
+from features.ghfacs_dag import run_ghfacs_dag
 from llm.prompts.GHFACS.classify import run as run_classify
 
 with open("configs/config.yaml", "r") as f:
@@ -40,6 +40,10 @@ with skip_run("skip", "ghfacs_svm_nonbalance") as check:
 with skip_run("skip", "ghfacs_bayes") as check:
     with check():
         run_ghfacs_bayes()
+
+with skip_run("skip", "ghfacs_dag") as check:
+    with check():
+        run_ghfacs_dag()
 
 with skip_run("skip", "classify") as check:
     with check():
