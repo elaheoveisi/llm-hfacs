@@ -1,23 +1,23 @@
 ﻿llm:
-  api_key: ""
+  api_key: ''
   input: GAHFACS_Version3_undersampled.xlsx
-  prompt: L3   # yaml file name (without .yaml) in src/llm/prompts/GHFACS/
+  prompt: L3 # yaml file name (without .yaml) in src/llm/prompts/GHFACS/
   default_prompt: L3
   model: gpt-5
-  mode: sync           # sync, batch_submit, batch_retrieve
-  batch_id: null       # used only when mode=batch_retrieve
-  limit: 100 # null for all rows
+  mode: sync # sync, batch_submit, batch_retrieve
+  batch_id: null # used only when mode=batch_retrieve
+  limit: 200 # null for all rows
   compact: false
-  evaluate: false           # L3 outputs precondition cols, not Final_Class/Final_HFACS_Code
-  retry_wait: 60       # seconds
+  evaluate: true # print accuracy + confusion matrix after classification
+  retry_wait: 60 # seconds
   max_retries: 3
-  workers: 20          # concurrent API requests
+  workers: 20 # concurrent API requests
   narrative_column: narr_accf
   classes:
-    - "AE100 only"
-    - "AE200 only"
-    - "Both"
-    - "anyofthem"
+    - 'AE100 only'
+    - 'AE200 only'
+    - 'Both'
+    - 'Neither'
   json_models:
     - gpt-4o
     - gpt-4o-mini
@@ -33,21 +33,20 @@
   ground_truth_columns: [AE100, AE200]
 
 paths:
-  ghfacs_data_dir: './data/GHFACS'
-  raw_data_dir: './data/raw'
-  processed_csv: './data/intermediate/processed_output.csv'
-  processed_excel: './data/intermediate/processed_output.xlsx'
-  svm_output_dir: './data/processed/svm'
-  ghfacs_svm_output_dir: './data/processed/ghfacs_svm'
-  dag_output_dir: './data/processed'
-  ghfacs_dag_output_dir: './data/processed/ghfacs_dag'
+  ghfacs_data_dir: 'data/GHFACS'
+  processed_data: 'data/processed/'
+  undersampled_csv: 'data/processed/GAHFACS_Version3_undersampled.csv'
+  raw_data_dir: 'data/raw'
+  processed_csv: 'data/intermediate/processed_output.csv'
+  processed_excel: 'data/intermediate/processed_output.xlsx'
+  svm_output_dir: 'data/processed/svm'
+  ghfacs_svm_output_dir: 'data/processed/ghfacs_svm'
+  dag_output_dir: 'data/processed'
 
 source_columns:
   Anomaly: 'Events_Anomaly'
   HumanFactors: 'Person 1_Human Factors'
   Contributing: 'Assessments_Contributing Factors / Situations'
-
-
 
 hfacs_categories:
   Situational_Factors:
@@ -68,12 +67,12 @@ hfacs_categories:
     - Anomaly_Inflight Event / Encounter Other / Unknown
     - Anomaly_Flight Deck / Cabin / Aircraft Event Passenger Electronic Device
     - Anomaly_Flight Deck / Cabin / Aircraft Event Smoke / Fire / Fumes / Odor
-  
+
   Personnel_Factors:
     - HumanFactors_Communication Breakdown
     - HumanFactors_Troubleshooting
     - HumanFactors_Human-Machine Interface
-  
+
   Condition_of_Operators:
     - HumanFactors_Confusion
     - HumanFactors_Distraction
@@ -82,21 +81,21 @@ hfacs_categories:
     - HumanFactors_Workload
     - HumanFactors_Physiological - Other
     - HumanFactors_Other / Unknown
-  
+
   Inadequate_Supervision:
     - Contributing_Staffing
     - Contributing_Manuals
     - HumanFactors_Training / Qualification
-  
+
   Failed_to_Correct_Problem:
     - Contributing_MEL
-  
+
   Planned_Inappropriate_Operations:
     - HumanFactors_Time Pressure
-  
+
   Supervisory_Violation:
     - Contributing_Company Policy
-  
+
   Organizational_Process:
     - Contributing_Procedure
     - Contributing_Software and Automation
@@ -108,7 +107,6 @@ hfacs_categories:
     - Contributing_Aircraft
     - Contributing_Airport
     - Contributing_Airspace Structure
-  
 
   Error:
     'Anomaly_Conflict Airborne Conflict': 5
@@ -127,7 +125,7 @@ hfacs_categories:
     'Anomaly_Inflight Event / Encounter Fuel Issue': 4
     'Anomaly_Ground Event / Encounter Fuel Issue': 3
     'Anomaly_Ground Event / Encounter Gear Up Landing': 4
-  
+
   Violation:
     'Anomaly_Airspace Violation All Types': 5
     'Anomaly_Deviation / Discrepancy - Procedural Clearance': 4
@@ -141,11 +139,9 @@ hfacs_categories:
     'Anomaly_Deviation / Discrepancy - Procedural Unauthorized Flight Operations (UAS)': 5
     'Anomaly_Deviation / Discrepancy - Procedural Weight And Balance': 4
     'Anomaly_Flight Deck / Cabin / Aircraft Event Passenger Misconduct': 2
-    
+
 ghfacs:
   precondition_cols: [PE100, PE200, PP100, PT100, PC100, PC200, PC300]
-
-
 
 ghfacs_dag:
   nodes: [PE100, PE200, PP100, PT100, PC100, PC200, PC300, AE100, AE200]
@@ -155,4 +151,3 @@ ghfacs_dag:
 
 svm:
   tie_break: 'error'
-

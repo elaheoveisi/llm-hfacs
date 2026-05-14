@@ -1,13 +1,15 @@
 from __future__ import annotations
+
 import os
 from typing import Dict, List, Tuple
+
 import pandas as pd
 import yaml
 
 
 def load_config() -> dict:
-    config_path = os.path.join(os.path.dirname(__file__), '../../configs/config.yaml')
-    with open(config_path, 'r', encoding='utf-8') as f:
+    config_path = os.path.join(os.path.dirname(__file__), "../../configs/config.yaml")
+    with open(config_path, "r", encoding="utf-8") as f:
         return yaml.safe_load(f)
 
 
@@ -15,22 +17,15 @@ def ensure_dir(path: str) -> None:
     os.makedirs(path, exist_ok=True)
 
 
-def read_data(path: str) -> pd.DataFrame:
-    path = str(path)
-    if path.lower().endswith(".csv"):
-        return pd.read_csv(path)
-    return pd.read_excel(path, engine="openpyxl")
-
-
-def load_dataset(config: dict) -> pd.DataFrame:
-    return pd.read_csv(config['paths']['processed_csv'])
+def load_dataset(path) -> pd.DataFrame:
+    return pd.read_csv(path)
 
 
 def get_hfacs_feature_cols(config: dict) -> List[str]:
-    _targets = {'Error', 'Violation'}
+    _targets = {"Error", "Violation"}
     return [
         col
-        for cat, subcats in config['hfacs_categories'].items()
+        for cat, subcats in config["hfacs_categories"].items()
         if cat not in _targets
         for col in subcats
     ]
@@ -71,6 +66,7 @@ def make_three_class_target(
     - Both active, counts equal, err_wsum > viol_wsum → 1
     - Both active, counts equal, weights equal → -1 (drop)
     """
+
     def _numeric(cols):
         present = [c for c in cols if c in df.columns]
         if not present:
@@ -81,7 +77,9 @@ def make_three_class_target(
         total = pd.Series(0.0, index=df.index)
         for c, w in cols_weights.items():
             if c in df.columns:
-                total += (pd.to_numeric(df[c], errors="coerce").fillna(0) > 0).astype(float) * w
+                total += (pd.to_numeric(df[c], errors="coerce").fillna(0) > 0).astype(
+                    float
+                ) * w
         return total
 
     err_active = _numeric(list(error_weights)) > 0
@@ -125,13 +123,12 @@ def make_three_class_target_from_config(
 def make_four_class_target(df: pd.DataFrame) -> pd.Series:
     """Build 4-class target from AE100/AE200 ground-truth columns.
 
-    Returns string labels: 'AE100 only', 'AE200 only', 'Both', 'anyofthem'.
+    Returns string labels: 'AE100 only', 'AE200 only', 'Both', 'Neither'.
     """
     ae100 = df["AE100"].notna()
     ae200 = df["AE200"].notna()
-    y = pd.Series("anyofthem", index=df.index, dtype=object)
+    y = pd.Series("Neither", index=df.index, dtype=object)
     y[ae100 & ~ae200] = "AE100 only"
     y[~ae100 & ae200] = "AE200 only"
     y[ae100 & ae200] = "Both"
     return y
-

@@ -3,11 +3,9 @@ from __future__ import annotations
 import os
 
 import pandas as pd
+from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
-from sklearn.model_selection import train_test_split
-from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import StandardScaler
-from sklearn.svm import SVC
+from sklearn.model_selection import GridSearchCV, StratifiedKFold, train_test_split
 
 from features.balancing import balance_features_labels
 from features.utils import (
@@ -16,27 +14,27 @@ from features.utils import (
 )
 
 
-def ghfacs_svm(config, df):
+def ghfacs_rf(config):
     out_dir = config["paths"]["ghfacs_svm_output_dir"]
     ensure_dir(out_dir)
+
+    data_dir = config["paths"]["ghfacs_data_dir"]
+    input_file = config["llm"]["input"]
+    df = pd.read_excel(os.path.join(data_dir, input_file))
 
     precondition_cols = config["ghfacs"]["precondition_cols"]
     feature_cols = [c for c in precondition_cols if c in df.columns]
 
     X = df[feature_cols].notna().astype(int)
-    y = make_four_class_target(df)
+    y4 = make_four_class_target(df)
 
-    stratify = y if y.nunique() > 1 else None
+    stratify = y4 if y4.nunique() > 1 else None
     X_train, X_test, y_train, y_test = train_test_split(
         X,
-        y,
+        y4,
         test_size=0.2,
         random_state=42,
         stratify=stratify,
-    )
-
-    assert set(y_train.unique()) == set(y.unique()), (
-        f"Missing classes in train split: {set(y.unique()) - set(y_train.unique())}"
     )
 
     print("\nClass distribution before balancing (train only):")
@@ -49,16 +47,29 @@ def ghfacs_svm(config, df):
     for cls, count in y_train.value_counts().sort_index().items():
         print(f"  Class {cls}: {count} cases")
 
-    pipeline = Pipeline(
-        [
-            ("scaler", StandardScaler()),
-            ("svc", SVC(C=1, kernel="rbf", gamma="scale", probability=False)),
-        ]
+    param_grid = {
+        "n_estimators": [100, 200, 500],
+        "max_depth": [None, 5, 10, 20],
+        "min_samples_split": [2, 5, 10],
+        "max_features": ["sqrt", "log2"],
+    }
+
+    n_splits = min(5, int(y_train.value_counts().min()))
+    cv = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=42)
+    grid = GridSearchCV(
+        RandomForestClassifier(random_state=42),
+        param_grid,
+        cv=cv,
+        scoring="f1_macro",
+        n_jobs=-1,
+        verbose=1,
     )
+    grid.fit(X_train, y_train)
 
-    pipeline.fit(X_train, y_train)
+    print(f"\nBest params: {grid.best_params_}")
+    print(f"Best CV f1_macro: {grid.best_score_:.4f}")
 
-    y_pred = pipeline.predict(X_test)
+    y_pred = grid.predict(X_test)
     classes = ["AE100 only", "AE200 only", "Both", "Neither"]
     print("\nTest accuracy:", accuracy_score(y_test, y_pred))
     print(
@@ -74,6 +85,6 @@ def ghfacs_svm(config, df):
             "y_pred": y_pred,
         }
     )
-    pred_path = os.path.join(out_dir, "ghfacs_svm_predictions.csv")
+    pred_path = os.path.join(out_dir, "ghfacs_rf_predictions.csv")
     pred_df.to_csv(pred_path, index=False)
     print(f"\nSaved: {pred_path}")

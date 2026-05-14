@@ -7,7 +7,7 @@ from pathlib import Path
 import networkx as nx
 from sklearn.metrics import confusion_matrix, classification_report, accuracy_score
 
-_src_dir = os.path.join(os.path.dirname(__file__), '..')
+_src_dir = os.path.join(os.path.dirname(__file__), "..")
 if _src_dir not in sys.path:
     sys.path.insert(0, _src_dir)
 
@@ -17,16 +17,16 @@ from features.utils import make_three_class_target_from_config  # noqa: E402
 from features.balancing import balance_undersample  # noqa: E402
 
 
-_cfg_path = os.path.join(os.path.dirname(__file__), '../../configs/config.yaml')
-with open(_cfg_path, 'r', encoding='utf-8') as _f:
+_cfg_path = os.path.join(os.path.dirname(__file__), "../../configs/config.yaml")
+with open(_cfg_path, "r", encoding="utf-8") as _f:
     config_yaml = yaml.safe_load(_f)
 
-_svm = config_yaml.get('svm', {})
-_dag = config_yaml.get('dag', {})
+_svm = config_yaml.get("svm", {})
+_dag = config_yaml.get("dag", {})
 
-CATEGORIES: list[str] = list(config_yaml['hfacs_categories'].keys())
-error_weights: dict = config_yaml['hfacs_categories']['Error']
-viol_weights: dict = config_yaml['hfacs_categories']['Violation']
+CATEGORIES: list[str] = list(config_yaml["hfacs_categories"].keys())
+error_weights: dict = config_yaml["hfacs_categories"]["Error"]
+viol_weights: dict = config_yaml["hfacs_categories"]["Violation"]
 
 
 def load_hfacs_data(csv_path: str) -> pd.DataFrame:
@@ -73,11 +73,11 @@ def learn_dag_ges(
     score_func: str | None = None,
 ) -> tuple[nx.DiGraph, dict]:
     if sink_nodes is None:
-        sink_nodes = tuple(_dag['sink_nodes'])
+        sink_nodes = tuple(_dag["sink_nodes"])
     if score_func is None:
-        score_func = _dag['score_func']
+        score_func = _dag["score_func"]
     if max_indegree is None:
-        max_indegree = _dag.get('max_indegree')
+        max_indegree = _dag.get("max_indegree")
 
     X = df[categories].astype(int).to_numpy()
     record = ges(X, score_func=score_func, maxP=max_indegree, parameters=None)
@@ -101,7 +101,9 @@ def learn_dag_ges(
     return G, record
 
 
-def export_dag_outputs(G: nx.DiGraph, output_dir: str, data_path: str | None = None) -> None:
+def export_dag_outputs(
+    G: nx.DiGraph, output_dir: str, data_path: str | None = None
+) -> None:
     outdir = Path(output_dir)
     outdir.mkdir(parents=True, exist_ok=True)
 
@@ -115,13 +117,19 @@ def export_dag_outputs(G: nx.DiGraph, output_dir: str, data_path: str | None = N
             {
                 "parent": parent,
                 "child": child,
-                "P(child=1|parent=1)": df[df[parent] == 1][child].mean() if (df[parent] == 1).any() else float("nan"),
+                "P(child=1|parent=1)": df[df[parent] == 1][child].mean()
+                if (df[parent] == 1).any()
+                else float("nan"),
             }
             for parent, child in G.edges()
         ]
-        pd.DataFrame(condprobs).to_csv(outdir / "learned_dag_conditional_probabilities.csv", index=False)
+        pd.DataFrame(condprobs).to_csv(
+            outdir / "learned_dag_conditional_probabilities.csv", index=False
+        )
     else:
-        print(f"[WARN] Could not find data file for conditional probabilities: {data_path}")
+        print(
+            f"[WARN] Could not find data file for conditional probabilities: {data_path}"
+        )
 
     nx.to_pandas_adjacency(G, nodelist=list(G.nodes()), weight=None).to_csv(
         outdir / "learned_dag_adjacency_matrix.csv"
@@ -129,6 +137,7 @@ def export_dag_outputs(G: nx.DiGraph, output_dir: str, data_path: str | None = N
 
     try:
         from networkx.drawing.nx_pydot import write_dot
+
         write_dot(G, str(outdir / "learned_dag.dot"))
     except Exception:
         pass
@@ -161,7 +170,9 @@ def run_hfacs_causal_learn_ges(
     score = record.get("score")
     score_str = str(score) if score is not None else "N/A"
     print(f"[INFO] GES complete. Score={score_str}. Outputs in {output_dir}")
-    (Path(output_dir) / "learned_dag_score.txt").write_text(f"GES Score: {score_str}\n", encoding="utf-8")
+    (Path(output_dir) / "learned_dag_score.txt").write_text(
+        f"GES Score: {score_str}\n", encoding="utf-8"
+    )
 
 
 def evaluate_dag_predictions(
@@ -208,7 +219,9 @@ def run_dag_evaluation(
     df_bal = balance_undersample(df_eval, "y3", seed=7)
     y3_bal = df_bal.pop("y3")
 
-    y_pred = evaluate_dag_predictions(G, df_bal[CATEGORIES], tie_break=_svm.get("tie_break", "error"))
+    y_pred = evaluate_dag_predictions(
+        G, df_bal[CATEGORIES], tie_break=_svm.get("tie_break", "error")
+    )
 
     labels = [0, 1, 2]
     label_names = ["Neither", "Error", "Violation"]
@@ -219,18 +232,25 @@ def run_dag_evaluation(
     print(f"Accuracy: {acc:.4f}")
     print(f"\nConfusion matrix (rows=true, cols=pred) {label_names}:\n{cm}")
     print("\nClassification report:\n")
-    print(classification_report(y3_bal, y_pred, labels=labels, target_names=label_names, digits=4))
+    print(
+        classification_report(
+            y3_bal, y_pred, labels=labels, target_names=label_names, digits=4
+        )
+    )
 
     out = Path(output_dir)
     out.mkdir(parents=True, exist_ok=True)
-    pd.DataFrame(cm, index=[f"true_{n}" for n in label_names],
-                 columns=[f"pred_{n}" for n in label_names]).to_csv(out / "dag_confusion_matrix.csv")
+    pd.DataFrame(
+        cm,
+        index=[f"true_{n}" for n in label_names],
+        columns=[f"pred_{n}" for n in label_names],
+    ).to_csv(out / "dag_confusion_matrix.csv")
     pd.DataFrame({"y_true": y3_bal.values, "y_pred": y_pred.values}).to_csv(
         out / "dag_predictions.csv", index=False
     )
     print(f"\nSaved → {out / 'dag_confusion_matrix.csv'}")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     run_hfacs_causal_learn_ges()
     run_dag_evaluation()

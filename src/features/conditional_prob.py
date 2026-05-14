@@ -77,7 +77,8 @@ def compute_all_hfacs_probabilities(
 
 
 def save_all_conditional_probabilities_to_csv(
-    results: dict, output_path: str = "./data/processed/all_conditional_probabilities.csv"
+    results: dict,
+    output_path: str = "./data/processed/all_conditional_probabilities.csv",
 ):
     """
     Combine all conditional probability DataFrames into one CSV file.
