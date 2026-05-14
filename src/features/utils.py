@@ -1,16 +1,11 @@
 from __future__ import annotations
 
 import os
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import pandas as pd
-import yaml
-
-
-def load_config() -> dict:
-    config_path = os.path.join(os.path.dirname(__file__), "../../configs/config.yaml")
-    with open(config_path, "r", encoding="utf-8") as f:
-        return yaml.safe_load(f)
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+from sklearn.model_selection import train_test_split
 
 
 def ensure_dir(path: str) -> None:
@@ -19,6 +14,63 @@ def ensure_dir(path: str) -> None:
 
 def load_dataset(path) -> pd.DataFrame:
     return pd.read_csv(path)
+
+
+def stratified_split(
+    X: pd.DataFrame,
+    y: pd.Series,
+    test_size: float = 0.2,
+    random_state: Optional[int] = 42,
+) -> Tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series]:
+    stratify = y if y.nunique() > 1 else None
+    return train_test_split(
+        X, y, test_size=test_size, random_state=random_state, stratify=stratify
+    )
+
+
+def build_dataset_XY(
+    df: pd.DataFrame,
+    feature_cols: List[str],
+    y: pd.Series,
+) -> Tuple[pd.DataFrame, pd.Series]:
+    cols = [c for c in feature_cols if c in df.columns]
+    X = df[cols].notna().astype(int)
+    return X, y
+
+
+def print_eval_metrics(
+    y_test: pd.Series,
+    y_pred,
+    classes: Optional[List[str]] = None,
+) -> None:
+    print("\nTest accuracy:", accuracy_score(y_test, y_pred))
+    if classes:
+        print(
+            "\nConfusion matrix (rows=true, cols=pred):\n",
+            confusion_matrix(y_test, y_pred, labels=classes),
+        )
+        print("\nClassification report:\n")
+        print(classification_report(y_test, y_pred, labels=classes, digits=4))
+    else:
+        print(
+            "\nConfusion matrix (rows=true, cols=pred):\n",
+            confusion_matrix(y_test, y_pred),
+        )
+        print("\nClassification report:\n")
+        print(classification_report(y_test, y_pred, digits=4))
+
+
+def save_predictions(
+    y_test: pd.Series,
+    y_pred,
+    out_dir: str,
+    filename: str,
+) -> None:
+    pred_path = os.path.join(out_dir, filename)
+    pd.DataFrame({"y_true": y_test.values, "y_pred": y_pred}).to_csv(
+        pred_path, index=False
+    )
+    print(f"\nSaved: {pred_path}")
 
 
 def get_hfacs_feature_cols(config: dict) -> List[str]:

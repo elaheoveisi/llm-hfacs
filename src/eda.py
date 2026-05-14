@@ -185,11 +185,8 @@ def load_config(path: Path) -> dict:
         return yaml.safe_load(f)
 
 
-def default_input_from_config(config: dict, config_path: Path) -> Path:
-    llm = config.get("llm", {})
-    paths = config.get("paths", {})
-    data_dir = config_path.parents[1] / paths.get("ghfacs_data_dir", "data/GHFACS")
-    return data_dir / llm.get("input", "GAHFACS_Version3.xlsx")
+def default_input_from_config(config: dict) -> Path:
+    return Path(config["paths"]["ghfacs_data_dir"]) / config["llm"]["input"]
 
 
 def print_report(tables: dict[str, pd.DataFrame], total: int) -> None:
