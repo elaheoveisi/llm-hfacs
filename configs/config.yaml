@@ -1,8 +1,8 @@
 ﻿llm:
   api_key: ''
-  input: GAHFACS_Version3_undersampled.xlsx
-  prompt: L3 # yaml file name (without .yaml) in src/llm/prompts/GHFACS/
-  default_prompt: L3
+  input: ASRS_1998_2026.csv
+  prompt: ASRS_UNSAFE_ACT # yaml file name (without .yaml) in src/llm/prompts/ASRS/
+  default_prompt: ASRS_UNSAFE_ACT
   model: gpt-5
   mode: sync # sync, batch_submit, batch_retrieve
   batch_id: null # used only when mode=batch_retrieve
@@ -45,8 +45,7 @@ paths:
   llm_output_dir: 'data/GHFACS'
   prompts_dir: 'src/llm/prompts/GHFACS'
   processed_data: 'data/processed/'
-  undersampled_csv: 'data/GHFACS/GAHFACS_Version3_undersampled.csv'
-  raw_data_dir: 'data/raw'
+raw_data_dir: 'data/raw'
   processed_csv: 'data/intermediate/processed_output.csv'
   processed_excel: 'data/intermediate/processed_output.xlsx'
   svm_output_dir: 'data/processed/svm'
