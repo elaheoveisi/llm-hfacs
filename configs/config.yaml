@@ -1,5 +1,5 @@
 ﻿llm:
-  api_key: 'gdd'
+  api_key: ''
   input: ASRS_1998_2026.csv
   prompt: ASRS_UNSAFE_ACT # yaml file name (without .yaml) in src/llm/prompts/ASRS/
   default_prompt: ASRS_UNSAFE_ACT
@@ -45,7 +45,7 @@ paths:
   llm_output_dir: 'data/GHFACS'
   prompts_dir: 'src/llm/prompts/GHFACS'
   processed_data: 'data/processed/'
-raw_data_dir: 'data/raw'
+  raw_data_dir: 'data/raw'
   processed_csv: 'data/intermediate/processed_output.csv'
   processed_excel: 'data/intermediate/processed_output.xlsx'
   svm_output_dir: 'data/processed/svm'
