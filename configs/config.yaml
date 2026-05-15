@@ -1,5 +1,5 @@
 ﻿llm:
-  api_key: ''
+  api_key: 'gdd'
   input: ASRS_1998_2026.csv
   prompt: ASRS_UNSAFE_ACT # yaml file name (without .yaml) in src/llm/prompts/ASRS/
   default_prompt: ASRS_UNSAFE_ACT
