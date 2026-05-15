@@ -1,8 +1,14 @@
 import os
+import sys
 from pathlib import Path
+
+_src = Path(__file__).resolve().parents[1]
+if str(_src) not in sys.path:
+    sys.path.insert(0, str(_src))
 
 import pandas as pd
 import polars as pl
+import yaml
 
 from features.utils import make_four_class_target
 
@@ -26,6 +32,7 @@ def load_raw_dataset(raw_dir):
             has_header=False,
             new_columns=col_names,
             infer_schema_length=0,
+            truncate_ragged_lines=True,
         )
         frames.append(df)
 
@@ -132,3 +139,12 @@ def undersample_ae100(config):
         print(f"Saved: {csv_path}")
 
     return df_out
+
+
+if __name__ == "__main__":
+    config_path = _src.parent / "configs" / "config.yaml"
+    with open(config_path) as f:
+        config = yaml.safe_load(f)
+
+    out = build_processed_dataset(config)
+    print(f"[INFO] Processed dataset saved. Shape: {out.shape}")

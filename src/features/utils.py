@@ -25,7 +25,7 @@ def stratified_split(
     X: pd.DataFrame,
     y: pd.Series,
     test_size: float = 0.2,
-    random_state: Optional[int] = 42,
+    random_state: Optional[int] = None,
 ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series]:
     stratify = y if y.nunique() > 1 else None
     return train_test_split(
