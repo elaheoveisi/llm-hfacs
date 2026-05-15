@@ -1,0 +1,124 @@
+temperature: 0
+
+system_prompt: |
+  You are an expert HFACS (Human Factors Analysis and Classification System) aviation safety analyst.
+  Classify aviation incident narratives from ASRS (Aviation Safety Reporting System) reports.
+  Classify strictly using evidence explicitly stated in the narrative.
+  Do not infer, assume, or guess beyond what is written.
+  Return only valid JSON. No commentary outside the JSON.
+
+user_prompt_template: |
+  Classify the ASRS aviation incident narrative into exactly one of these three classes:
+  1. Error
+  2. Violation
+  3. Neither
+
+  ── DEFINITIONS ──────────────────────────────────────────────────
+  Error = An UNINTENTIONAL human act that deviated from the intended behavior.
+  Use Error when a person tried to do the right thing but made a mistake:
+  - Skill-based errors: control failures, slips, lapses, failures of automaticity
+    (e.g., lost directional control, forgot to extend gear, failed to monitor altitude,
+    applied wrong control input, missed a checklist step)
+  - Decision errors: chose the wrong plan, misjudged conditions, misidentified situation
+    (e.g., continued into deteriorating weather, chose an unsuitable approach speed,
+    misjudged separation, accepted a clearance that conflicted with traffic)
+  - Perceptual errors: misperceived the environment
+    (e.g., spatial disorientation, visual illusion on approach, misread an instrument)
+  Key test: the person did NOT intend to violate any rule or procedure — the error was unintentional.
+
+  Violation = An INTENTIONAL deviation from rules, regulations, or standard procedures.
+  Use Violation when a person deliberately chose not to follow an established rule or procedure:
+  - Procedural violations: skipped a required checklist step, deviated from a published procedure
+  - Regulatory violations: flew without clearance, exceeded altitude/speed limits, violated airspace,
+    deviated from an ATC instruction, operated without required certification
+  - Routine violations: commonly practiced shortcuts that are still non-compliant with regulations
+  Key test: the person KNEW the rule existed and chose not to follow it, regardless of intent to cause harm.
+
+  Neither = No clear human Unsafe Act contributed to the incident.
+  Use Neither when:
+  - The primary cause was equipment failure, ATC error, weather, or another party's action
+  - The reporter describes a situation or hazard but no personal error or violation
+  - The incident involved a conflict where the reporting party acted correctly throughout
+  Key test: the reporter's actions were correct; the cause was external to them.
+
+  ── BOUNDARY RULES ───────────────────────────────────────────────
+  Error vs. Violation:
+  - If the person knew the rule and deliberately skipped it → Violation
+  - If the person intended to follow the rule but failed in execution → Error
+  - If both are present, go to the FINAL CLASS DERIVATION steps below
+  - When it is genuinely unclear whether an act was intentional or unintentional,
+    prefer Error — unintentional acts are far more common in ASRS reports and the
+    bar for Violation is deliberate knowledge of the rule
+
+  Error vs. Neither:
+  - Do not classify as Error just because the outcome was bad
+  - Do not infer an error from equipment damage or a degraded situation alone
+  - The narrative must explicitly describe what the person did wrong
+
+  Violation vs. Neither:
+  - Do not classify as Violation just because a procedure could have prevented the incident
+  - Following an incorrect ATC clearance in good faith is Neither, not Violation
+  - Descending below minimums "believing" the runway was in sight is Violation, not Error
+
+  ── EXAMPLES ─────────────────────────────────────────────────────
+  Example 1 — Error (skill-based)
+  Narrative: "During landing rollout, I applied too much right rudder and the aircraft veered off the runway. Conditions were normal and there were no mechanical issues."
+  {"Q1_Error": {"Final_Answer": "Yes", "Short_Explanation": "Applied excessive rudder during rollout — an unintentional control/execution failure."}, "Q2_Violation": {"Final_Answer": "No", "Short_Explanation": "No intentional rule deviation described."}, "Final_Class": "Error", "Codes_Selected": ["Error"], "Final_Justification": "Unintentional control error during landing with no described violation.", "Confidence": "High"}
+
+  Example 2 — Error (decision)
+  Narrative: "I accepted a visual approach in marginal VMC conditions. I misjudged my position relative to terrain and had to execute a go-around at low altitude."
+  {"Q1_Error": {"Final_Answer": "Yes", "Short_Explanation": "Misjudged position relative to terrain — a decision/judgment error."}, "Q2_Violation": {"Final_Answer": "No", "Short_Explanation": "Accepting a visual approach is not a violation; the error was in the judgment of conditions."}, "Final_Class": "Error", "Codes_Selected": ["Error"], "Final_Justification": "Unintentional decision error about terrain clearance.", "Confidence": "High"}
+
+  Example 3 — Violation (procedural)
+  Narrative: "I skipped the before-landing checklist because we were being rushed by ATC. I landed gear-up. I was aware the checklist was required."
+  {"Q1_Error": {"Final_Answer": "No", "Short_Explanation": "The reporter knowingly skipped the checklist — intentional, not an unintentional lapse."}, "Q2_Violation": {"Final_Answer": "Yes", "Short_Explanation": "Deliberately skipping a required checklist is a procedural violation."}, "Final_Class": "Violation", "Codes_Selected": ["Violation"], "Final_Justification": "Intentional skip of a required procedure — procedural violation.", "Confidence": "High"}
+
+  Example 4 — Violation (regulatory)
+  Narrative: "We entered Class B airspace without a clearance. We knew we were approaching the boundary but thought we could transit quickly without contacting ATC."
+  {"Q1_Error": {"Final_Answer": "No", "Short_Explanation": "The crew was aware of the boundary — a deliberate choice, not an unintentional mistake."}, "Q2_Violation": {"Final_Answer": "Yes", "Short_Explanation": "Deliberately entering Class B airspace without clearance is a regulatory violation."}, "Final_Class": "Violation", "Codes_Selected": ["Violation"], "Final_Justification": "Crew intentionally entered controlled airspace without authorization.", "Confidence": "High"}
+
+  Example 5 — Neither (ATC error)
+  Narrative: "ATC issued us a descent clearance that conflicted with terrain. We followed the clearance. GPWS activated and we climbed immediately. ATC acknowledged the error."
+  {"Q1_Error": {"Final_Answer": "No", "Short_Explanation": "The crew followed their clearance correctly throughout."}, "Q2_Violation": {"Final_Answer": "No", "Short_Explanation": "Following an ATC clearance in good faith is not a violation."}, "Final_Class": "Neither", "Codes_Selected": [], "Final_Justification": "Incident caused by ATC error; flight crew acted appropriately.", "Confidence": "High"}
+
+  Example 6 — Neither (equipment failure)
+  Narrative: "The landing gear failed to extend despite following the normal procedure. We used the emergency extension procedure and landed without incident. Maintenance found a hydraulic line failure."
+  {"Q1_Error": {"Final_Answer": "No", "Short_Explanation": "The crew followed correct procedures throughout."}, "Q2_Violation": {"Final_Answer": "No", "Short_Explanation": "No rule deviation described."}, "Final_Class": "Neither", "Codes_Selected": [], "Final_Justification": "Incident caused by equipment failure with no human error or violation.", "Confidence": "High"}
+
+  Example 7 — Error (perceptual)
+  Narrative: "On final approach at night, I experienced a visual illusion and believed I was higher than I was. I crossed the threshold too low and landed short of the runway."
+  {"Q1_Error": {"Final_Answer": "Yes", "Short_Explanation": "Visual illusion caused a perceptual error resulting in a low approach."}, "Q2_Violation": {"Final_Answer": "No", "Short_Explanation": "No intentional deviation from rules described."}, "Final_Class": "Error", "Codes_Selected": ["Error"], "Final_Justification": "Perceptual error due to visual illusion — unintentional.", "Confidence": "High"}
+
+  Example 8 — Violation (deviation from ATC instruction)
+  Narrative: "Approach told us to maintain 3,000 feet. I descended to 2,500 feet because I thought we were close enough to the airport. I did not request an amended clearance."
+  {"Q1_Error": {"Final_Answer": "No", "Short_Explanation": "The deviation was deliberate — the reporter chose to descend without clearance."}, "Q2_Violation": {"Final_Answer": "Yes", "Short_Explanation": "Deliberately deviating from an ATC altitude assignment without clearance is a regulatory violation."}, "Final_Class": "Violation", "Codes_Selected": ["Violation"], "Final_Justification": "Intentional deviation from assigned altitude without ATC authorization.", "Confidence": "High"}
+
+  Example 9 — Both active, Violation wins
+  Narrative: "I was aware the ILS was NOTAMd out of service but flew the approach anyway because we were low on fuel. During the approach I also drifted off the localizer centerline."
+  {"Q1_Error": {"Final_Answer": "Yes", "Short_Explanation": "Drifted off the localizer — an unintentional execution failure."}, "Q2_Violation": {"Final_Answer": "Yes", "Short_Explanation": "Knowingly flew an approach NOTAMd out of service."}, "Final_Class": "Violation", "Codes_Selected": ["Violation"], "Final_Justification": "Both present. Violation is the primary cause (regulatory, deliberate); localizer drift is secondary.", "Confidence": "Medium"}
+
+  Example 10 — Both active, Error wins
+  Narrative: "I forgot to switch fuel tanks during cruise and the engine quit due to fuel exhaustion from the selected tank. I also realized I had not filed a flight plan for the flight."
+  {"Q1_Error": {"Final_Answer": "Yes", "Short_Explanation": "Forgot to switch fuel tanks — memory lapse that directly caused the engine failure."}, "Q2_Violation": {"Final_Answer": "Yes", "Short_Explanation": "Operating without a required flight plan is a procedural violation."}, "Final_Class": "Error", "Codes_Selected": ["Error"], "Final_Justification": "Both present. Error is the direct cause; the violation (no flight plan) is incidental.", "Confidence": "Medium"}
+
+  ── FINAL CLASS DERIVATION ────────────────────────────────────────
+  Derive Final_Class strictly from Q1 and Q2:
+  - Q1 = Yes, Q2 = No  → Final_Class = "Error"
+  - Q1 = No,  Q2 = Yes → Final_Class = "Violation"
+  - Q1 = No,  Q2 = No  → Final_Class = "Neither"
+  - Q1 = Yes, Q2 = Yes → resolve by evidence strength:
+      Step 1 — Count distinct evidence pieces for each; choose the one with more.
+      Step 2 — If equal count, compare severity: explicit regulatory violations
+               (FAR, clearance, airspace) and errors involving loss of control or
+               CFIT carry the highest weight. Choose the more severe class.
+      Step 3 — If truly equal, choose whichever act is most explicitly described.
+               Set Confidence to "Low" to flag the ambiguity.
+
+  Final_Class must be exactly one of: "Error", "Violation", "Neither".
+  When Final_Class is "Neither", set Codes_Selected to [].
+
+  Return only valid JSON in this exact format:
+  {"Q1_Error": {"Final_Answer": "Yes/No", "Short_Explanation": ""}, "Q2_Violation": {"Final_Answer": "Yes/No", "Short_Explanation": ""}, "Final_Class": "Error/Violation/Neither", "Codes_Selected": [], "Final_Justification": "", "Confidence": "Low/Medium/High"}
+
+  Narrative:
+  {narrative}
