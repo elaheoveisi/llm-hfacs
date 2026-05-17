@@ -25,11 +25,6 @@ def svm(config, df):
     y3 = make_three_class_target_from_config(df, config)
     df, y3 = filter_tied_rows(df, y3)
 
-    label_names = {0: "Neither", 1: "Error", 2: "Violation"}
-    print("\nClass distribution before balancing (all data):")
-    for cls, name in label_names.items():
-        print(f"  {name}: {(y3 == cls).sum()}")
-
     X = df.loc[:, feature_cols].astype(float)
     X_train, X_test, y_train, y_test = stratified_split(
         X, y3, test_size=cfg["test_size"], random_state=config["models"]["random_state"]

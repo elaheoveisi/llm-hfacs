@@ -13,19 +13,14 @@ def ensure_dir(path: str) -> None:
 
 
 def load_dataset(path) -> pd.DataFrame:
-    for enc in ("utf-8", "cp1252", "latin-1"):
-        try:
-            return pd.read_csv(path, encoding=enc)
-        except UnicodeDecodeError:
-            continue
-    raise ValueError(f"Could not decode {path} with utf-8, cp1252, or latin-1")
+    return pd.read_csv(path)
 
 
 def stratified_split(
     X: pd.DataFrame,
     y: pd.Series,
     test_size: float = 0.2,
-    random_state: Optional[int] = None,
+    random_state: Optional[int] = 42,
 ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series]:
     stratify = y if y.nunique() > 1 else None
     return train_test_split(

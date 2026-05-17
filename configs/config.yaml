@@ -1,26 +1,18 @@
 ﻿llm:
   api_key: ''
-  input: ASRS_1998_2026.csv
-  prompt: ASRS_UNSAFE_ACT # yaml file name (without .yaml) in src/llm/prompts/ASRS/
-  default_prompt: ASRS_UNSAFE_ACT
+  input: GAHFACS_Version3_undersampled.xlsx
+  prompt: extract_and_classify # yaml file name (without .yaml) in src/llm/prompts/GHFACS/
+  default_prompt: extract_and_classify
   model: gpt-5
   mode: sync # sync, batch_submit, batch_retrieve
   batch_id: null # used only when mode=batch_retrieve
-  limit: 10 # null for all rows
+  limit: 200 # null for all rows
   compact: false
   evaluate: true # print accuracy + confusion matrix after classification
   retry_wait: 60 # seconds
   max_retries: 3
   workers: 20 # concurrent API requests
-  prompt_dir: ASRS   # GHFACS or ASRS — controls which prompts/ subfolder is used
-  narrative_column: narr_accf   # single column (GHFACS)
-  # narrative_columns below is used for ASRS — all 5 fields are concatenated into one narrative
-  narrative_columns:
-    - 'Report 1_Narrative'
-    - 'Report 1_Callback'
-    - 'Report 2_Narrative'
-    - 'Report 2_Callback'
-    - 'Report 1_Synopsis'
+  narrative_column: narr_accf
   classes:
     - 'AE100 only'
     - 'AE200 only'
@@ -45,13 +37,11 @@ paths:
   llm_output_dir: 'data/GHFACS'
   prompts_dir: 'src/llm/prompts/GHFACS'
   processed_data: 'data/processed/'
+  undersampled_csv: 'data/processed/GAHFACS_Version3_undersampled.csv'
   raw_data_dir: 'data/raw'
   processed_csv: 'data/intermediate/processed_output.csv'
   processed_excel: 'data/intermediate/processed_output.xlsx'
   svm_output_dir: 'data/processed/svm'
-  rf_output_dir: 'data/processed/rf'
-  asrs_data_dir: 'data/raw'
-  ghfacs_raw_data: 'data/GHFACS/GAHFACS_Version3.xlsx'
   ghfacs_svm_output_dir: 'data/processed/ghfacs_svm'
   dag_output_dir: 'data/processed'
   eda_output_dir: 'data/intermediate'
@@ -121,61 +111,37 @@ hfacs_categories:
     - Contributing_Airport
     - Contributing_Airspace Structure
 
-  # ---------------------------------------------------------------------------
-  # HFACS UNSAFE ACTS — TARGET CLASSES FOR CLASSIFICATION
-  #
-  # These two categories (Error and Violation) form the Unsafe Acts level of
-  # the HFACS framework. Each entry is an ASRS anomaly column that serves as
-  # evidence for that class. The numeric value is an evidence-strength weight
-  # on a scale of 1–5:
-  #   5 = very strong signal  (this anomaly almost always means this class)
-  #   4 = strong signal       (highly indicative, rarely ambiguous)
-  #   3 = moderate signal     (likely, but some cases may belong to Neither)
-  #   2 = weak signal         (possible indicator, often mixed with other causes)
-  #
-  # Neither (class 0): assigned when no Error or Violation anomaly is present.
-  # It captures incidents driven by situational/environmental factors rather
-  # than a human unsafe act — e.g., equipment failure, weather, or external hazard.
-  # ---------------------------------------------------------------------------
-
-  # Error: an UNINTENTIONAL human act that deviated from intended behavior.
-  # Includes skill-based slips, decision errors, and perceptual failures —
-  # the person meant to do the right thing but execution or judgment fell short.
   Error:
-    'Anomaly_Conflict Airborne Conflict': 5           # Two aircraft converged in the air — strong sign of a pilot awareness or judgment error
-    'Anomaly_Conflict Ground Conflict': 4             # Aircraft came dangerously close on the ground — likely a taxi/situational awareness error
-    'Anomaly_Conflict NMAC': 5                        # Near mid-air collision — one of the clearest indicators of a serious error in separation or awareness
-    'Anomaly_Deviation - Altitude Excursion From Assigned Altitude': 3  # Drifted from assigned altitude — moderate; could be distraction, workload, or autopilot issue
-    'Anomaly_Deviation - Altitude Overshoot': 2       # Climbed past target altitude — weak; often a minor control/timing error
-    'Anomaly_Deviation - Altitude Undershoot': 2      # Stopped short of target altitude — weak; similar to overshoot, usually minor
-    'Anomaly_Deviation - Speed All Types': 2          # Speed outside limits — weak; frequently situational or environmental rather than a clear error
-    'Anomaly_Deviation - Track / Heading All Types': 2  # Strayed from assigned heading — weak; may reflect inattention or navigation confusion
-    'Anomaly_Inflight Event / Encounter Loss Of Aircraft Control': 5   # Lost control in flight — one of the strongest indicators of a skill-based or decision error
-    'Anomaly_Ground Event / Encounter Loss Of Aircraft Control': 5     # Lost control on the ground — equally strong; often reflects taxi or brake/rudder handling failure
-    'Anomaly_Inflight Event / Encounter VFR In IMC': 5                 # Flew into instrument conditions while under visual rules — classic decision/judgment error
-    'Anomaly_Inflight Event / Encounter CFTT / CFIT': 5                # Controlled flight toward or into terrain — highest-severity error; judgment or awareness failure
-    'Anomaly_Inflight Event / Encounter Fly Away (UAS)': 4             # UAS lost link and flew away — strong sign of planning or situational awareness error
-    'Anomaly_Inflight Event / Encounter Fuel Issue': 4                 # Fuel problem in flight — strong; typically reflects pre-flight planning or decision error
-    'Anomaly_Ground Event / Encounter Fuel Issue': 3                   # Fuel issue on the ground — moderate; may involve maintenance or servicing oversight
-    'Anomaly_Ground Event / Encounter Gear Up Landing': 4              # Landed with gear retracted — strong indicator of a checklist or memory lapse error
+    'Anomaly_Conflict Airborne Conflict': 5
+    'Anomaly_Conflict Ground Conflict': 4
+    'Anomaly_Conflict NMAC': 5
+    'Anomaly_Deviation - Altitude Excursion From Assigned Altitude': 3
+    'Anomaly_Deviation - Altitude Overshoot': 2
+    'Anomaly_Deviation - Altitude Undershoot': 2
+    'Anomaly_Deviation - Speed All Types': 2
+    'Anomaly_Deviation - Track / Heading All Types': 2
+    'Anomaly_Inflight Event / Encounter Loss Of Aircraft Control': 5
+    'Anomaly_Ground Event / Encounter Loss Of Aircraft Control': 5
+    'Anomaly_Inflight Event / Encounter VFR In IMC': 5
+    'Anomaly_Inflight Event / Encounter CFTT / CFIT': 5
+    'Anomaly_Inflight Event / Encounter Fly Away (UAS)': 4
+    'Anomaly_Inflight Event / Encounter Fuel Issue': 4
+    'Anomaly_Ground Event / Encounter Fuel Issue': 3
+    'Anomaly_Ground Event / Encounter Gear Up Landing': 4
 
-  # Violation: an INTENTIONAL deviation from rules, regulations, or procedures.
-  # The person knew a rule existed and chose not to follow it — regardless of
-  # whether they intended harm. This covers both deliberate shortcuts and
-  # non-compliant decisions made under pressure.
   Violation:
-    'Anomaly_Airspace Violation All Types': 5                             # Entered protected airspace without authorization — one of the clearest regulatory violations
-    'Anomaly_Deviation / Discrepancy - Procedural Clearance': 4           # Deviated from an ATC clearance — strong; acting outside what was authorized by ATC
-    'Anomaly_Deviation / Discrepancy - Procedural FAR': 5                 # Violated a Federal Aviation Regulation — the defining category of a regulatory violation
-    'Anomaly_Deviation / Discrepancy - Procedural Hazardous Material Violation': 5  # Transported hazmat improperly — strict regulatory requirement; always a serious violation
-    'Anomaly_Deviation / Discrepancy - Procedural Landing Without Clearance': 5     # Landed without ATC clearance — a direct and unambiguous procedural violation
-    'Anomaly_Deviation / Discrepancy - Procedural Maintenance': 4         # Maintenance performed outside approved procedures — strong; a deliberate procedural shortcut
-    'Anomaly_Deviation / Discrepancy - Procedural MEL / CDL': 4           # Flew with a deferred item not covered by MEL/CDL — strong; knowingly operated outside limits
-    'Anomaly_Deviation / Discrepancy - Procedural Other / Unknown': 2     # Some procedural deviation occurred but specifics are unclear — weak signal; nature is ambiguous
-    'Anomaly_Deviation / Discrepancy - Procedural Published Material / Policy': 3   # Deviated from company policy or published guidance — moderate; not always a regulation
-    'Anomaly_Deviation / Discrepancy - Procedural Unauthorized Flight Operations (UAS)': 5  # UAS operated without authorization — clear regulatory violation
-    'Anomaly_Deviation / Discrepancy - Procedural Weight And Balance': 4  # Flew outside weight/balance limits — strong; a known limit was exceeded
-    'Anomaly_Flight Deck / Cabin / Aircraft Event Passenger Misconduct': 2 # Passenger broke a rule — weak link to crew violation; often external to the crew's control
+    'Anomaly_Airspace Violation All Types': 5
+    'Anomaly_Deviation / Discrepancy - Procedural Clearance': 4
+    'Anomaly_Deviation / Discrepancy - Procedural FAR': 5
+    'Anomaly_Deviation / Discrepancy - Procedural Hazardous Material Violation': 5
+    'Anomaly_Deviation / Discrepancy - Procedural Landing Without Clearance': 5
+    'Anomaly_Deviation / Discrepancy - Procedural Maintenance': 4
+    'Anomaly_Deviation / Discrepancy - Procedural MEL / CDL': 4
+    'Anomaly_Deviation / Discrepancy - Procedural Other / Unknown': 2
+    'Anomaly_Deviation / Discrepancy - Procedural Published Material / Policy': 3
+    'Anomaly_Deviation / Discrepancy - Procedural Unauthorized Flight Operations (UAS)': 5
+    'Anomaly_Deviation / Discrepancy - Procedural Weight And Balance': 4
+    'Anomaly_Flight Deck / Cabin / Aircraft Event Passenger Misconduct': 2
 
 ghfacs:
   precondition_cols: [PE100, PE200, PP100, PT100, PC100, PC200, PC300]
@@ -210,19 +176,11 @@ models:
     gamma: scale
 
   ghfacs_rf:
-    n_estimators: 200
-    max_depth: null
-    min_samples_split: 2
-    max_features: sqrt
-
-  rf:
-    test_size: 0.15
     n_estimators: [100, 200, 500]
     max_depth: [null, 5, 10, 20]
     min_samples_split: [2, 5, 10]
     max_features: [sqrt, log2]
     cv_splits: 5
-
 
   ghfacs_bayes:
     n_samples: 1000
