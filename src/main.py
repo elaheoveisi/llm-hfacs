@@ -21,6 +21,7 @@ from models.ghfacs_no_rs import (
     ghfacs_rf as ghfacs_rf_no_rs,
     ghfacs_svm as ghfacs_svm_no_rs,
 )
+from models.rf_p import rf_p as run_rf
 from models.svm import svm as run_svm
 from utils import skip_run
 
@@ -44,9 +45,12 @@ with skip_run("skip", "eda") as check, check():
     save_tables(tables, eda_output_dir)
     print(f"\n[INFO] Saved EDA tables to: {eda_output_dir}")
 
-with skip_run("skip", "svm") as check, check():
-    df = load_dataset(config["paths"]["undersampled_csv"])
+with skip_run("run", "svm") as check, check():
+    df = load_dataset(config["paths"]["processed_csv"])
     run_svm(config, df)
+
+with skip_run("run", "rf") as check, check():
+    run_rf(config)
 
 with skip_run("skip", "ghfacs_svm") as check, check():
     df = load_dataset(config["paths"]["undersampled_csv"])
@@ -60,18 +64,18 @@ with skip_run("skip", "ghfacs_rf_no_rs") as check, check():
     df = load_dataset(config["paths"]["undersampled_csv"])
     ghfacs_rf_no_rs(config, df)
 
-with skip_run("run", "ghfacs_svm_balancing") as check, check():
+with skip_run("skip", "ghfacs_svm_balancing") as check, check():
     df = load_dataset(config["paths"]["undersampled_csv"])
     ghfacs_svm_balancing(config, df)
 
-with skip_run("run", "ghfacs_rf_balancing") as check, check():
+with skip_run("skip", "ghfacs_rf_balancing") as check, check():
     df = load_dataset(config["paths"]["undersampled_csv"])
     ghfacs_rf_balancing(config, df)
 
 
 
 
-with skip_run("run", "ghfacs_svm_no_rs") as check, check():
+with skip_run("skip", "ghfacs_svm_no_rs") as check, check():
     df = load_dataset(config["paths"]["undersampled_csv"])
     ghfacs_svm_no_rs(config, df)
 

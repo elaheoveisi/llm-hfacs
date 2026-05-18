@@ -17,7 +17,7 @@ def load_dataset(path) -> pd.DataFrame:
     path = Path(path)
     if path.suffix.lower() in {".xlsx", ".xls"}:
         return pd.read_excel(path)
-    return pd.read_csv(path)
+    return pd.read_csv(path, low_memory=False)
 
 
 def stratified_split(
