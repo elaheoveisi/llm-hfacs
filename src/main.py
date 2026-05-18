@@ -45,7 +45,7 @@ with skip_run("skip", "eda") as check, check():
     save_tables(tables, eda_output_dir)
     print(f"\n[INFO] Saved EDA tables to: {eda_output_dir}")
 
-with skip_run("run", "svm") as check, check():
+with skip_run("skip", "svm") as check, check():
     df = load_dataset(config["paths"]["processed_csv"])
     run_svm(config, df)
 

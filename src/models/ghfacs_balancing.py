@@ -34,7 +34,8 @@ def ghfacs_svm(config, df):
     )
 
     X_train, y_train = balance_and_report(X_train, y_train)
-
+    X_test, y_test = balance_and_report(X_test, y_test)
+    
     pipeline = Pipeline([
         ("scaler", StandardScaler()),
         ("svc", SVC(C=cfg["C"], kernel=cfg["kernel"], gamma=cfg["gamma"], probability=False)),

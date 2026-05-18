@@ -38,6 +38,8 @@ def rf_p(config):
         X, y3, test_size=cfg["test_size"], random_state=random_state
     )
     X_train, y_train = balance_and_report(X_train, y_train)
+    X_test, y_test = balance_and_report(X_test, y_test)
+
 
     param_grid = {
         "n_estimators": cfg["n_estimators"],
