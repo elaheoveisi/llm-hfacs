@@ -13,6 +13,14 @@ from eda import (
 from features.utils import load_dataset
 from llm.classify import run as run_classify
 from models.ghfacs import ghfacs_bayes, ghfacs_rf, ghfacs_svm, ghfacs_svm_nonbalance
+from models.ghfacs_balancing import (
+    ghfacs_rf as ghfacs_rf_balancing,
+    ghfacs_svm as ghfacs_svm_balancing,
+)
+from models.ghfacs_no_rs import (
+    ghfacs_rf as ghfacs_rf_no_rs,
+    ghfacs_svm as ghfacs_svm_no_rs,
+)
 from models.svm import svm as run_svm
 from utils import skip_run
 
@@ -44,17 +52,30 @@ with skip_run("skip", "ghfacs_svm") as check, check():
     df = load_dataset(config["paths"]["undersampled_csv"])
     ghfacs_svm(config, df)
 
-with skip_run("run", "ghfacs_rf") as check, check():
+with skip_run("skip", "ghfacs_rf") as check, check():
     df = load_dataset(config["paths"]["undersampled_csv"])
     ghfacs_rf(config, df)
 
-with skip_run("skip", "ghfacs_svm_nonbalance") as check, check():
+with skip_run("skip", "ghfacs_rf_no_rs") as check, check():
     df = load_dataset(config["paths"]["undersampled_csv"])
-    ghfacs_svm_nonbalance(config, df)
+    ghfacs_rf_no_rs(config, df)
 
-with skip_run("skip", "ghfacs_bayes") as check, check():
+with skip_run("run", "ghfacs_svm_balancing") as check, check():
     df = load_dataset(config["paths"]["undersampled_csv"])
-    ghfacs_bayes(config, df)
+    ghfacs_svm_balancing(config, df)
+
+with skip_run("run", "ghfacs_rf_balancing") as check, check():
+    df = load_dataset(config["paths"]["undersampled_csv"])
+    ghfacs_rf_balancing(config, df)
+
+
+
+
+with skip_run("run", "ghfacs_svm_no_rs") as check, check():
+    df = load_dataset(config["paths"]["undersampled_csv"])
+    ghfacs_svm_no_rs(config, df)
+
+
 
 with skip_run("skip", "classify") as check, check():
     run_classify(config)

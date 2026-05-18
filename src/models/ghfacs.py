@@ -8,7 +8,6 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVC
 
-from features.balancing import balance_and_report
 from features.utils import (
     build_dataset_XY,
     ensure_dir,
@@ -28,14 +27,12 @@ def ghfacs_svm(config, df):
 
     X, y = build_dataset_XY(df, config["ghfacs"]["precondition_cols"], make_four_class_target(df))
     X_train, X_test, y_train, y_test = stratified_split(
-        X, y, test_size=config["models"]["test_size"], random_state=config["models"]["random_state"]
+        X, y, test_size=config["models"]["test_size"],random_state=config["models"]["random_state"]
     )
 
     assert set(y_train.unique()) == set(y.unique()), (
         f"Missing classes in train split: {set(y.unique()) - set(y_train.unique())}"
     )
-
-    X_train, y_train = balance_and_report(X_train, y_train)
 
     pipeline = Pipeline([
         ("scaler", StandardScaler()),
@@ -57,8 +54,6 @@ def ghfacs_svm_nonbalance(config, df):
     X_train, X_test, y_train, y_test = stratified_split(
         X, y, test_size=config["models"]["test_size"], random_state=config["models"]["random_state"]
     )
-    X_train, y_train = balance_and_report(X_train, y_train)
-
     pipeline = Pipeline([
         ("scaler", StandardScaler()),
         ("svc", SVC(C=cfg["C"], kernel=cfg["kernel"], gamma=cfg["gamma"], probability=False)),
@@ -80,8 +75,6 @@ def ghfacs_rf(config, df):
     X_train, X_test, y_train, y_test = stratified_split(
         X, y, test_size=config["models"]["test_size"], random_state=random_state
     )
-    X_train, y_train = balance_and_report(X_train, y_train)
-
     param_grid = {
         "n_estimators": cfg["n_estimators"],
         "max_depth": cfg["max_depth"],
@@ -119,8 +112,6 @@ def ghfacs_bayes(config, df):
     X_train, X_test, y_train, y_test = stratified_split(
         X, y, test_size=config["models"]["test_size"], random_state=random_state
     )
-    X_train, y_train = balance_and_report(X_train, y_train)
-
     class_to_idx = {c: i for i, c in enumerate(CLASSES)}
     y_train_idx = y_train.map(class_to_idx).values.astype(int)
 

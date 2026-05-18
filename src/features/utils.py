@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 import pandas as pd
@@ -13,6 +14,9 @@ def ensure_dir(path: str) -> None:
 
 
 def load_dataset(path) -> pd.DataFrame:
+    path = Path(path)
+    if path.suffix.lower() in {".xlsx", ".xls"}:
+        return pd.read_excel(path)
     return pd.read_csv(path)
 
 

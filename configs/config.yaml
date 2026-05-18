@@ -37,7 +37,7 @@ paths:
   llm_output_dir: 'data/GHFACS'
   prompts_dir: 'src/llm/prompts/GHFACS'
   processed_data: 'data/processed/'
-  undersampled_csv: 'data/processed/GAHFACS_Version3_undersampled.csv'
+  undersampled_csv: 'data/GHFACS/GAHFACS_Version3.xlsx'
   raw_data_dir: 'data/raw'
   processed_csv: 'data/intermediate/processed_output.csv'
   processed_excel: 'data/intermediate/processed_output.xlsx'
