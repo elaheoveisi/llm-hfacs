@@ -21,7 +21,7 @@ from models.ghfacs_no_rs import (
     ghfacs_rf as ghfacs_rf_no_rs,
     ghfacs_svm as ghfacs_svm_no_rs,
 )
-from models.rf_p import rf_p as run_rf
+from models.random_forest import random_forest as run_rf
 from models.svm import svm as run_svm
 from utils import skip_run
 

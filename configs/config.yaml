@@ -81,8 +81,6 @@ hfacs_categories:
     - HumanFactors_Confusion
     - HumanFactors_Distraction
     - HumanFactors_Situational Awareness
-    - HumanFactors_Fatigue
-    - HumanFactors_Workload
     - HumanFactors_Physiological - Other
     - HumanFactors_Other / Unknown
 
@@ -111,6 +109,39 @@ hfacs_categories:
     - Contributing_Aircraft
     - Contributing_Airport
     - Contributing_Airspace Structure
+
+  Adverse_Mental_States:
+    - HumanFactors_Workload
+    - HumanFactors_Complacency
+    - HumanFactors_Prospective Memory Failure
+    - HumanFactors_Stress / Psychological Pressure
+    - HumanFactors_Decision Making Under Uncertainty
+
+  Adverse_Physiological_States:
+    - HumanFactors_Fatigue
+    - HumanFactors_Circadian Rhythm Disruption
+    - HumanFactors_Toxic Fume / Smoke Exposure
+    - HumanFactors_Cognitive Saturation
+    - HumanFactors_Poor Lighting / Visual Limitation
+    - HumanFactors_Cold / Adverse Weather Exposure
+
+  Physical_Environment:
+    - Contributing_Lighting Conditions
+    - Contributing_Concurrent Teams in Shared Workspace
+    - Contributing_Remote / Outstation Environment
+
+  Team_Coordination:
+    - HumanFactors_Pre-Task Coordination Failure
+    - HumanFactors_Cross-Station Handoff Failure
+    - HumanFactors_Verbal-Only Communication Risk
+    - HumanFactors_Suppression of Safety Reporting
+
+  Technology_Design:
+    - Contributing_Error-Unfriendly Design
+    - Contributing_Inadequate Inspection Tools
+    - Contributing_Documentation Content Adequacy
+
+  
 
   Error:
     'Anomaly_Conflict Airborne Conflict': 5

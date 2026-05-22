@@ -15,7 +15,7 @@ from features.utils import (
     stratified_split,
 )
 
-def rf_p(config):
+def random_forest(config):
     out_dir = config["paths"]["rf_output_dir"]
     ensure_dir(out_dir)
     cfg = config["models"]["rf"]
