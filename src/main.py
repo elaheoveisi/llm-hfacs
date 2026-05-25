@@ -1,8 +1,6 @@
 from pathlib import Path
 
 import yaml
-
-from data.dataset import build_processed_dataset, undersample_ae100
 from eda import (
     build_eda,
     default_input_from_config,
@@ -12,18 +10,21 @@ from eda import (
 )
 from features.utils import load_dataset
 from llm.classify import run as run_classify
-from models.ghfacs import ghfacs_bayes, ghfacs_rf, ghfacs_svm, ghfacs_svm_nonbalance
-from models.ghfacs_balancing import (
-    ghfacs_rf as ghfacs_rf_balancing,
-    ghfacs_svm as ghfacs_svm_balancing,
+from llm.extract_factors import run as run_extract_factors
+from models.ghfacs import (
+    ghfacs_rf,
+    ghfacs_rf_balancing,
+    ghfacs_rf_no_rs,
+    ghfacs_svm,
+    ghfacs_svm_balancing,
+    ghfacs_svm_no_rs,
 )
-from models.ghfacs_no_rs import (
-    ghfacs_rf as ghfacs_rf_no_rs,
-    ghfacs_svm as ghfacs_svm_no_rs,
-)
-from models.random_forest import random_forest as run_rf
-from models.svm import svm as run_svm
+from models.hfacs import random_forest as run_rf
+from models.hfacs import svm as run_svm
+from models.random_forest_new_features import random_forest_new_features as run_rf_new_features
 from utils import skip_run
+
+from data.dataset import build_processed_dataset, undersample_ae100
 
 with open("configs/config.yaml", "r") as f:
     config = yaml.safe_load(f)
@@ -49,8 +50,11 @@ with skip_run("skip", "svm") as check, check():
     df = load_dataset(config["paths"]["processed_csv"])
     run_svm(config, df)
 
-with skip_run("run", "rf") as check, check():
+with skip_run("skip", "rf") as check, check():
     run_rf(config)
+
+with skip_run("skip", "rf_new_features") as check, check():
+    run_rf_new_features(config)
 
 with skip_run("skip", "ghfacs_svm") as check, check():
     df = load_dataset(config["paths"]["undersampled_csv"])
@@ -72,14 +76,12 @@ with skip_run("skip", "ghfacs_rf_balancing") as check, check():
     df = load_dataset(config["paths"]["undersampled_csv"])
     ghfacs_rf_balancing(config, df)
 
-
-
-
 with skip_run("skip", "ghfacs_svm_no_rs") as check, check():
     df = load_dataset(config["paths"]["undersampled_csv"])
     ghfacs_svm_no_rs(config, df)
 
-
+with skip_run("run", "extract_factors") as check, check():
+    run_extract_factors(config)
 
 with skip_run("skip", "classify") as check, check():
     run_classify(config)

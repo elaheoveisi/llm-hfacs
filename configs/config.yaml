@@ -1,9 +1,9 @@
 ﻿llm:
-  api_key: ''
+  api_key: 
   input: GAHFACS_Version3_undersampled.xlsx
   prompt: extract_and_classify # yaml file name (without .yaml) in src/llm/prompts/GHFACS/
   default_prompt: extract_and_classify
-  model: gpt-5
+  model: gpt-4o-mini
   mode: sync # sync, batch_submit, batch_retrieve
   batch_id: null # used only when mode=batch_retrieve
   limit: 200 # null for all rows
@@ -40,9 +40,11 @@ paths:
   undersampled_csv: 'data/GHFACS/GAHFACS_Version3.xlsx'
   raw_data_dir: 'data/raw'
   processed_csv: 'data/intermediate/processed_output.csv'
+  new_features_csv: 'data/processed/new_features_asrs.csv'
   processed_excel: 'data/intermediate/processed_output.xlsx'
   svm_output_dir: 'data/processed/svm'
   rf_output_dir: 'data/processed/rf'
+  rf_new_features_output_dir: 'data/processed/rf_new_features'
   ghfacs_svm_output_dir: 'data/processed/ghfacs_svm'
   dag_output_dir: 'data/processed'
   eda_output_dir: 'data/intermediate'
@@ -139,7 +141,7 @@ hfacs_categories:
   Technology_Design:
     - Contributing_Error-Unfriendly Design
     - Contributing_Inadequate Inspection Tools
-    - Contributing_Documentation Content Adequacy
+    #- Contributing_Documentation Content Adequacy
 
   
 
