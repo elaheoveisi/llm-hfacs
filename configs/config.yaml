@@ -6,12 +6,12 @@
   model: gpt-4o-mini
   mode: sync # sync, batch_submit, batch_retrieve
   batch_id: null # used only when mode=batch_retrieve
-  limit: 200 # null for all rows
+  limit: null  # null for all rows
   compact: false
   evaluate: true # print accuracy + confusion matrix after classification
-  retry_wait: 60 # seconds
-  max_retries: 3
-  workers: 20 # concurrent API requests
+  retry_wait: 10 # seconds added to provider-suggested waits
+  max_retries: 8
+  workers: 5 # concurrent API requests; keep low to avoid TPM rate-limit bursts
   narrative_column: narr_accf
   classes:
     - 'AE100 only'
@@ -39,8 +39,8 @@ paths:
   processed_data: 'data/processed/'
   undersampled_csv: 'data/GHFACS/GAHFACS_Version3.xlsx'
   raw_data_dir: 'data/raw'
-  processed_csv: 'data/intermediate/processed_output.csv'
-  new_features_csv: 'data/processed/new_features_asrs.csv'
+  processed_csv: 'data/processed/sampled_75_per_class.csv' #'data/intermediate/processed_output.csv'
+  new_features_csv: 'data/intermediate/sampled_75_per_class_new_features.csv'
   processed_excel: 'data/intermediate/processed_output.xlsx'
   svm_output_dir: 'data/processed/svm'
   rf_output_dir: 'data/processed/rf'
@@ -112,37 +112,45 @@ hfacs_categories:
     - Contributing_Airport
     - Contributing_Airspace Structure
 
-  Adverse_Mental_States:
-    - HumanFactors_Workload
-    - HumanFactors_Complacency
-    - HumanFactors_Prospective Memory Failure
-    - HumanFactors_Stress / Psychological Pressure
-    - HumanFactors_Decision Making Under Uncertainty
+  Cognitive_and_Attention_Factors:
+    - HumanFactors_Complacency / Expectation Bias
+    - HumanFactors_Attention Failure
+    - HumanFactors_Workload / Cognitive Saturation
+    - HumanFactors_Memory Lapse
+    - HumanFactors_Mental Overload
+    - HumanFactors_Emotional State
 
-  Adverse_Physiological_States:
-    - HumanFactors_Fatigue
-    - HumanFactors_Circadian Rhythm Disruption
-    - HumanFactors_Toxic Fume / Smoke Exposure
-    - HumanFactors_Cognitive Saturation
-    - HumanFactors_Poor Lighting / Visual Limitation
-    - HumanFactors_Cold / Adverse Weather Exposure
+  Decision_and_Planning_Factors:
+    - HumanFactors_Decision Making / Judgment
+    - HumanFactors_Risk Assessment
+    - HumanFactors_Prioritization Failure
+    - HumanFactors_Inadequate Planning
+    - HumanFactors_Mission Complexity Mismanagement
 
-  Physical_Environment:
-    - Contributing_Lighting Conditions
-    - Contributing_Concurrent Teams in Shared Workspace
-    - Contributing_Remote / Outstation Environment
+  Coordination_and_Communication_Factors:
+    - HumanFactors_Coordination Failure
+    - HumanFactors_Maintenance Coordination
+    - HumanFactors_Verification Failure
+    - HumanFactors_Monitoring Failure
+    - HumanFactors_Information Transfer Failure
 
-  Team_Coordination:
-    - HumanFactors_Pre-Task Coordination Failure
-    - HumanFactors_Cross-Station Handoff Failure
-    - HumanFactors_Verbal-Only Communication Risk
-    - HumanFactors_Suppression of Safety Reporting
+  Environmental_and_Operational_Context:
+    - Contributing_Visual Limitation
+    - Contributing_Lighting Condition
+    - Contributing_Terrain / Obstacle Environment
+    - Contributing_Operational Complexity
 
-  Technology_Design:
-    - Contributing_Error-Unfriendly Design
-    - Contributing_Inadequate Inspection Tools
-    #- Contributing_Documentation Content Adequacy
 
+  Maintenance_and_Safety_Control_Failures:
+    - Contributing_Unresolved Maintenance Issue
+
+  Information_and_Workflow_Processes:
+    - Contributing_Documentation Issue
+    - Contributing_Workflow Design
+
+  Procedure_and_Compliance_Factors:
+    - HumanFactors_Checklist Compliance
+    - HumanFactors_Operational Pressure
   
 
   Error:

@@ -38,8 +38,8 @@ def bayesian(config):
     X_train, X_test, y_train, y_test = stratified_split(
         X, y3, test_size=cfg["test_size"], random_state=random_state
     )
-    X_train, y_train = balance_and_report(X_train, y_train)
-    X_test, y_test = balance_and_report(X_test, y_test)
+    X_train, y_train = balance_and_report(X_train, y_train, "train")
+    X_test, y_test = balance_and_report(X_test, y_test, "test")
 
     class_to_idx = {c: i for i, c in enumerate(CLASSES)}
     y_train_idx = y_train.map(class_to_idx).values.astype(int)
@@ -94,7 +94,7 @@ def random_forest(config):
     cfg = config["models"]["rf"]
     random_state = config["models"]["random_state"]
 
-    df = load_dataset(config["paths"]["processed_csv"])
+    df = load_dataset(config["paths"]["new_features_csv"])
 
     feature_cols = [c for c in get_hfacs_feature_cols(config) if c in df.columns]
     y3 = make_three_class_target_from_config(df, config)
@@ -109,8 +109,8 @@ def random_forest(config):
     X_train, X_test, y_train, y_test = stratified_split(
         X, y3, test_size=cfg["test_size"], random_state=random_state
     )
-    X_train, y_train = balance_and_report(X_train, y_train)
-    X_test, y_test = balance_and_report(X_test, y_test)
+    X_train, y_train = balance_and_report(X_train, y_train, "train")
+    X_test, y_test = balance_and_report(X_test, y_test, "test")
 
     param_grid = {
         "n_estimators": cfg["n_estimators"],
@@ -153,8 +153,8 @@ def svm(config, df):
     X_train, X_test, y_train, y_test = stratified_split(
         X, y3, test_size=cfg["test_size"], random_state=config["models"]["random_state"]
     )
-    X_train, y_train = balance_and_report(X_train, y_train)
-    X_test, y_test = balance_and_report(X_test, y_test)
+    X_train, y_train = balance_and_report(X_train, y_train, "train")
+    X_test, y_test = balance_and_report(X_test, y_test, "test")
 
     pipeline = Pipeline(
         [

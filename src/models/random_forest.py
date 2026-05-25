@@ -36,8 +36,8 @@ def random_forest(config):
     X_train, X_test, y_train, y_test = stratified_split(
         X, y3, test_size=cfg["test_size"], random_state=random_state
     )
-    X_train, y_train = balance_and_report(X_train, y_train)
-    X_test, y_test = balance_and_report(X_test, y_test)
+    X_train, y_train = balance_and_report(X_train, y_train, "train")
+    X_test, y_test = balance_and_report(X_test, y_test, "test")
 
 
     param_grid = {

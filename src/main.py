@@ -21,7 +21,7 @@ from models.ghfacs import (
 )
 from models.hfacs import random_forest as run_rf
 from models.hfacs import svm as run_svm
-from models.random_forest_new_features import random_forest_new_features as run_rf_new_features
+
 from utils import skip_run
 
 from data.dataset import build_processed_dataset, undersample_ae100
@@ -50,11 +50,11 @@ with skip_run("skip", "svm") as check, check():
     df = load_dataset(config["paths"]["processed_csv"])
     run_svm(config, df)
 
-with skip_run("skip", "rf") as check, check():
+with skip_run("run", "rf") as check, check():
     run_rf(config)
 
-with skip_run("skip", "rf_new_features") as check, check():
-    run_rf_new_features(config)
+#with skip_run("skip", "rf_new_features") as check, check():
+    #run_rf_new_features(config)
 
 with skip_run("skip", "ghfacs_svm") as check, check():
     df = load_dataset(config["paths"]["undersampled_csv"])
@@ -80,7 +80,7 @@ with skip_run("skip", "ghfacs_svm_no_rs") as check, check():
     df = load_dataset(config["paths"]["undersampled_csv"])
     ghfacs_svm_no_rs(config, df)
 
-with skip_run("run", "extract_factors") as check, check():
+with skip_run("skip", "extract_factors") as check, check():
     run_extract_factors(config)
 
 with skip_run("skip", "classify") as check, check():

@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import json
 import os
+import random
+import re
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
@@ -13,6 +15,15 @@ from sklearn.metrics import accuracy_score, classification_report, confusion_mat
 from tqdm import tqdm
 
 from llm.utils import _reader, finals, flatten, four_class
+
+
+def _retry_delay(error: Exception, attempt: int, llm_cfg: dict) -> float:
+    """Prefer OpenAI's suggested wait, then add a small stagger for parallel calls."""
+    retry_wait = float(llm_cfg["retry_wait"])
+    match = re.search(r"try again in ([0-9.]+)s", str(error), flags=re.IGNORECASE)
+    if match:
+        return float(match.group(1)) + retry_wait + random.uniform(0.25, 1.25)
+    return retry_wait * attempt + random.uniform(0.25, 1.25)
 
 
 def call_llm(client, msgs: list, llm_cfg: dict, prm: dict) -> str:
@@ -41,7 +52,7 @@ def call_llm(client, msgs: list, llm_cfg: dict, prm: dict) -> str:
                 ) from e
             if i == retries:
                 raise
-            time.sleep(int(llm_cfg["retry_wait"]) * i)
+            time.sleep(_retry_delay(e, i, llm_cfg))
 
 
 def evaluate_labels(

@@ -42,8 +42,8 @@ def ghfacs_svm(config, df, *, use_random_state=True):
         f"Missing classes in train split: {set(y.unique()) - set(y_train.unique())}"
     )
 
-    X_train, y_train = balance_and_report(X_train, y_train)
-    X_test, y_test = balance_and_report(X_test, y_test)
+    X_train, y_train = balance_and_report(X_train, y_train, "train")
+    X_test, y_test = balance_and_report(X_test, y_test, "test")
 
     pipeline = Pipeline([
         ("scaler", StandardScaler()),
@@ -73,8 +73,8 @@ def ghfacs_rf(config, df, *, use_random_state=True):
             X, y, test_size=config["models"]["test_size"], stratify=stratify
         )
 
-    X_train, y_train = balance_and_report(X_train, y_train)
-    X_test, y_test = balance_and_report(X_test, y_test)
+    X_train, y_train = balance_and_report(X_train, y_train, "train")
+    X_test, y_test = balance_and_report(X_test, y_test, "test")
 
     param_grid = {
         "n_estimators": cfg["n_estimators"],
@@ -144,8 +144,8 @@ def ghfacs_bayes(config, df):
     X_train, X_test, y_train, y_test = stratified_split(
         X, y, test_size=config["models"]["test_size"], random_state=random_state
     )
-    X_train, y_train = balance_and_report(X_train, y_train)
-    X_test, y_test = balance_and_report(X_test, y_test)
+    X_train, y_train = balance_and_report(X_train, y_train, "train")
+    X_test, y_test = balance_and_report(X_test, y_test, "test")
 
     class_to_idx = {c: i for i, c in enumerate(CLASSES)}
     y_train_idx = y_train.map(class_to_idx).values.astype(int)

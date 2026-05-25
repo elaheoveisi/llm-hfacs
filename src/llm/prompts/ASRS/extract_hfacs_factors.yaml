@@ -1,213 +1,112 @@
 temperature: 0
 system_prompt: |
   You are an expert HFACS aviation safety analyst.
-  Read the incident narrative and detect whether each listed human factor is present.
-  Mark 1 when the narrative explicitly describes OR clearly implies the factor.
-  Mark 0 only when the factor is truly absent or purely speculative.
-  Return only valid JSON — no commentary, no explanation outside the JSON.
+  Mark 1 when the narrative explicitly describes OR clearly implies the factor; 0 if absent.
+  Return only valid JSON - no commentary outside the JSON.
 user_prompt_template: |
-  Analyze the aviation incident narrative below. For each human factor, return 1 if present
-  or clearly implied in the narrative, or 0 if absent.
+  For each factor return 1 (present/implied) or 0 (absent).
 
   Factor definitions:
   {factors}
 
-  Boundary rules:
-  - Complacency: requires MULTIPLE people each assuming someone else already checked — a single person skipping a step = Pre-Task Coordination Failure, NOT complacency.
-  - Stress: requires EXPLICIT language ("rushed", "hasty", "time pressure") — do NOT infer from difficult circumstances alone.
-  - Cognitive Saturation: only when multiple aircraft systems demand simultaneous attention during an inflight emergency — not maintenance, not single-focus emergencies.
-  - Cross-Station Handoff: applies when the aircraft changed hands to a different crew/location AND critical information was lost — one mechanic leaving while another continues the same session is NOT a handoff.
-  - DocAdequacy vs VCR: DocAdequacy = a written document was wrong/incomplete/unavailable; VCR = information was never written down at all. Do NOT apply DocAdequacy to equipment failures or coordination failures where no specific document was deficient.
-  - Error-Unfriendly Design: DESIGN made the error easy to commit or impossible to detect — weather, runway conditions, and human coordination failures are NOT design flaws.
+  Key boundaries:
+  - Complacency/Expectation Bias = assumed fine without checking; Attention Failure = looked but missed or was distracted.
+  - Memory Lapse = intended to act but forgot; Attention Failure = failed to notice while present.
+  - Workload/Cognitive Saturation = too many tasks; Mental Overload = information too complex to process.
+  - Operational Pressure = external pressure from schedule, management, or commercial demands.
+  - Coordination Failure = who/when not agreed; Information Transfer Failure = specific info not passed (can co-occur).
+  - Verification Failure = skipped a check before acting; Monitoring Failure = failed to watch during operation.
+  - Documentation Issue = document existed but was missing, wrong, ambiguous, incomplete, or outdated.
+  - Unresolved Maintenance Issue = open maintenance item existed before this event.
 
-  --- FEW-SHOT EXAMPLES ---
+  --- EXAMPLES ---
+  Example 1 - Verification Failure=1, Information Transfer Failure=1, Coordination Failure=1, Maintenance Coordination=1, Memory Lapse=0:
+  "We repacked the nose gear strut at ZZZ and released the aircraft. It flew all day and overnighted at XXX.
+  Next morning the torque links separated. The job card lacked the required buyback step; the next crew was never told."
 
-  Example 1 (Cross-Station Handoff=1, Documentation Adequacy=1, Cognitive Saturation=0):
-  Narrative: "We repacked the nose landing gear strut at ZZZ and released the aircraft for
-  service. The aircraft flew all day and overnighted at XXX. The next day the torque links
-  separated causing damage in Burlington, VT. The job card we completed did not have the
-  required inspection buyback."
-  Key reasoning: Aircraft left ZZZ with a skipped required step (buyback) that was never
-  communicated to the next crew — Cross-Station Handoff=1. Job card missing a required step
-  — Documentation=1. No simultaneous competing demands on the operator — Cognitive Saturation=0.
-
-  Example 2 (Cognitive Saturation=1, Decision Under Uncertainty=1, Cross-Station Handoff=0):
-  Narrative: "At FL250 the gear door warning lights came on while ATC was questioning our
-  altitude deviation. We were simultaneously managing airspeed reduction, monitoring gear
-  indicators, responding to ATC, and deciding whether to divert — all at once."
-  Key reasoning: Crew simultaneously managing multiple aircraft systems, ATC, altitude, and
-  divert decision all at the same moment — Cognitive Saturation=1. Divert decision made with
-  unresolved gear status — Decision Under Uncertainty=1. Aircraft never changed hands —
-  Cross-Station Handoff=0.
-
-  Example 3 (Documentation Adequacy=1, Cross-Station Handoff=1, Complacency=0):
-  Narrative: "The mechanic confirmed verbally that the annual was current. I flew the aircraft.
-  Later I found the logbooks showed the last annual was 13 months ago — the aircraft was out
-  of annual. The mechanic had retained the logbooks and gave me incorrect information."
-  Key reasoning: Pilot could not verify annual because logbooks were unavailable and relied
-  on verbal word — Documentation=1. Mechanic passed incorrect status to pilot —
-  Cross-Station Handoff=1. Not complacency — pilot actively asked and was given wrong info.
-
+  Example 2 - Workload/Cognitive Saturation=1, Decision Making/Judgment=1, Monitoring Failure=1:
+  "At FL250 gear door warnings lit up while ATC questioned our altitude. We were simultaneously managing
+  airspeed, gear indicators, ATC responses, and a divert decision. We lost track of altitude during this time."
   --- END EXAMPLES ---
 
-  Fill in this JSON (replace 0 with 1 where the factor is evidenced or clearly implied):
+  Fill in this JSON:
   {template}
 
   Narrative:
   {narrative}
 factors:
-  HumanFactors_Workload: >
-    Excessive workload or task overload overwhelmed the operator — too many tasks at once,
-    time pressure causing rushing, or task complexity beyond capacity.
-  HumanFactors_Complacency: >
-    Routine-induced group assumption — MULTIPLE people involved in the same task each assume
-    someone else already verified, so no one actually checks. The defining pattern: shared
-    false belief across a group that the check was done by someone else.
-    Apply when: several inspectors all sign off without independent verification; a crew of
-    people each assumes another already caught the issue; a routine step is collectively
-    skipped because it has "always been fine."
-    NOT complacency: a single manager or individual who skips an inspection alone
-    (that is Pre-Task Coordination Failure); trusting a verbal statement instead of checking
-    records (that is Verbal-Only Communication Risk).
-  "HumanFactors_Prospective Memory Failure": >
-    Forgot to perform a planned action or missed a step — intended to do something but it
-    slipped from memory at the moment of execution. Examples: forgot to reinstall a cap
-    after inspection; forgot to latch a cowl before releasing the aircraft; missed a
-    buyback inspection step after completing a repair; mechanic left the worksite before
-    the final verification was done; forgot to disconnect equipment before moving aircraft.
-  "HumanFactors_Stress / Psychological Pressure": >
-    Apply ONLY when the narrative explicitly uses stress-indicating language such as
-    "rushed", "hasty", "hurried", "time pressure", "due to time constraints", "felt pressure",
-    "schedule pressure", or "management pressure" — AND states that this pressure directly
-    caused degraded or hurried work.
-    NOT this factor: any difficult or emergency situation without explicit mention of rushing;
-    cognitive overload from simultaneous demands (Cognitive Saturation); a hard decision
-    (Decision Under Uncertainty). Do NOT infer stress from circumstances — the narrative
-    must say so explicitly.
-  "HumanFactors_Decision Making Under Uncertainty": >
-    A discrete decision was made at a specific moment with incomplete or unverified facts.
-    Examples: deciding to continue a flight when a system anomaly was unresolved; choosing
-    to land with uncertain gear status; accepting a maintenance release verbally without
-    verifying the logbook. Do NOT apply when the situation is merely stressful without a
-    clear decision point.
-  HumanFactors_Fatigue: >
-    Fatigue, tiredness, sleepiness, or reduced alertness from lack of rest.
-  "HumanFactors_Circadian Rhythm Disruption": >
-    Night shift work, jet lag, irregular sleep schedule, or circadian rhythm disruption
-    affected alertness or performance.
-  "HumanFactors_Toxic Fume / Smoke Exposure": >
-    Exposure to smoke, toxic fumes, or chemical odors that impaired cognitive or physical
-    performance.
-  "HumanFactors_Cognitive Saturation": >
-    Simultaneous overload of multiple competing aircraft system demands during an inflight
-    emergency — the crew must manage several malfunctions, system warnings, ATC interactions,
-    and aircraft control inputs ALL AT THE SAME MOMENT. Apply only in inflight emergencies
-    with concurrent competing demands. Do NOT apply to: maintenance situations, a single
-    emergency with one main focus, time pressure, or difficult decisions.
-  "HumanFactors_Poor Lighting / Visual Limitation": >
-    Apply ONLY when the narrative explicitly states that lighting conditions (darkness, glare,
-    inadequate illumination, or visual obstruction) prevented the operator from seeing or
-    detecting the specific problem. Lighting must be named as the direct cause of the visual
-    difficulty. NOT this factor: working at night without any mention of lighting as an
-    obstacle; outdoor or ramp work; any nighttime event where lighting is not cited as a cause.
-  "HumanFactors_Cold / Adverse Weather Exposure": >
-    Cold temperature or adverse weather physically impaired the operator's dexterity,
-    alertness, or performance.
-  "Contributing_Lighting Conditions": >
-    Ambient lighting conditions (darkness, glare, inadequate illumination) contributed to
-    the incident by reducing visibility.
-  "Contributing_Concurrent Teams in Shared Workspace": >
-    Multiple crews, teams, or uncoordinated individuals working on or around the same aircraft
-    without adequate coordination — includes: one team operating equipment while another
-    worker is in the affected area; two mechanics on the same aircraft with unclear
-    responsibility for final steps; multiple uncoordinated people accessing and modifying
-    the same aircraft over time.
-  "Contributing_Remote / Outstation Environment": >
-    Incident involved a remote location, outstation, or environment with limited support,
-    specialized resources, or trained personnel — mechanic not trained for the specific
-    aircraft or task, limited tooling or manuals at outstation.
-  "HumanFactors_Pre-Task Coordination Failure": >
-    Failure to coordinate or verify before starting work — includes: not checking who else
-    is in the work area before operating equipment; not verifying which aircraft model is
-    being worked on; assigning a task to an unqualified or untrained person; maintenance
-    manager clearing an aircraft without proper inspection; pilot departing without
-    verifying maintenance records or airworthiness documentation.
-  "HumanFactors_Cross-Station Handoff Failure": >
-    Critical aircraft status information was NOT passed when the aircraft changed hands.
-    Apply whenever ANY of these patterns appears:
-    (1) Maintenance signed off a repair at one location, aircraft flew, same or related
-        problem recurred or was found unairworthy at the next location.
-    (2) A required step (e.g. buyback inspection, logbook entry) was skipped before
-        releasing the aircraft, and the next crew was not informed.
-    (3) A chronic recurring problem appeared at multiple stations because crews did not
-        communicate its full history.
-    (4) One crew performed work and released aircraft without informing the next crew of
-        critical status, damage, or incomplete actions.
-    (5) Damage occurred and was not reported before the next crew took the aircraft.
-    The handoff can be between mechanics, shifts, cities, or flight crews — any transfer
-    where information was lost. NOT a handoff: one mechanic leaving while another continues
-    the same work session with no release to a new party.
-  "HumanFactors_Verbal-Only Communication Risk": >
-    Critical safety information was communicated verbally only, with no written record —
-    OR was never communicated or documented at all.
-    Apply when ANY of these patterns appears:
-    (1) Pilot or crew relied on verbal confirmation instead of checking written records
-        (e.g. mechanic said annual was current; pilot took their word without seeing logbook).
-    (2) A repair or inspection result was approved or communicated verbally with no written
-        sign-off (e.g. "he said it was OK" with no formal measurement or record).
-    (3) Damage or defect caused by one party was not written up before the aircraft was
-        released to the next party.
-    (4) Work was performed on the aircraft with no written authorization, work order, or
-        record of who did it or what was done.
-    (5) Maintenance status was conveyed verbally only, with no written record for the
-        next crew.
-    NOT VCR: physical equipment failures (broken fastener, defective seal) where
-    documentation was completed normally — the issue must be about the absence or
-    verbal-only nature of COMMUNICATION, not about the equipment itself failing.
-  "HumanFactors_Suppression of Safety Reporting": >
-    A safety concern was not reported, was downplayed, or was actively suppressed —
-    includes: a manager altering or removing safety concerns from a report; ground crew
-    failing to report damage they caused; crew hesitating to write up a discrepancy;
-    known defects not formally documented to avoid grounding the aircraft.
-  "Contributing_Error-Unfriendly Design": >
-    The DESIGN of equipment, a system, or a procedure made the error easy to commit or
-    the problem impossible to detect — not human error alone, not equipment wear, not
-    environmental conditions.
-    Apply when: fasteners or latches look identical locked vs unlocked; two similar aircraft
-    models share a workspace but have different procedures with no clear differentiation;
-    a component is held by a snap ring or non-positive locking fastener that provides no
-    tactile or visual confirmation of proper installation; a cockpit warning or indicator
-    was ambiguous or gave misleading information; a single-failure-point design caused
-    catastrophic loss of control (e.g. single tow-bar pin whose failure releases the aircraft);
-    a system behaved in an unexpected or counter-intuitive way that a pilot or mechanic
-    could not reasonably anticipate from normal training.
-    NOT Error-Unfriendly Design: environmental conditions such as frost heave, runway
-    surface, or weather; human coordination failures such as a mechanic leaving a cowl
-    unlatched (that is PMF or Pre-Task); equipment that simply wore out or broke without
-    a design-level ambiguity contributing to the error.
-  "Contributing_Inadequate Inspection Tools": >
-    The tools, equipment, or access needed for inspection were missing, inadequate, or
-    unsuitable for the task.
-  "Contributing_Documentation Content Adequacy": >
-    A specific written document — job card, logbook, maintenance manual, procedure, or
-    regulatory record — was itself incomplete, incorrect, ambiguous, or inaccessible,
-    and this directly contributed to the incident.
-    Apply ONLY when the narrative points to a SPECIFIC document being flawed:
-    (1) A job card or work card was missing a required step (e.g. no buyback inspection).
-    (2) A logbook was signed off incorrectly, or a required measurement was not recorded.
-    (3) A procedure was too vague to specify a critical step clearly.
-    (4) Logbooks were unavailable so the pilot could not verify airworthiness, OR the
-        annual inspection was not properly signed off before flight.
-    (5) A service bulletin or AD was not accessible to maintenance personnel.
-    (6) The wrong aircraft model's procedure was used because documentation was not
-        model-specific.
-    (7) A repair was verbally assessed but the result was never entered into any formal
-        record (the written document is absent, not just verbal).
-    (8) Required maintenance records were incomplete or incorrectly completed.
-    NOT Documentation Adequacy: equipment failures where no document was involved
-    (broken tow bar, frost heave, defective seal); coordination failures between mechanics
-    working together (that is Pre-Task Coordination or Concurrent Teams); a pilot verbally
-    told the aircraft was airworthy and chose to rely on that word — the verbal reliance
-    is VCR, Documentation Adequacy only applies if the written record was also flawed or
-    missing. Do NOT apply to every maintenance incident — only when a specific named
-    document was deficient.
+  "HumanFactors_Complacency / Expectation Bias": >
+    Operator assumed conditions were normal based on routine or habit without verifying.
+    Also covers expectation bias: perceiving what was expected rather than what was actually present.
+  "HumanFactors_Attention Failure": >
+    Operator failed to direct, sustain, or distribute attention appropriately. Includes inattention,
+    tunneling, fixation on one task while ignoring others, and distraction at a critical moment.
+  "HumanFactors_Workload / Cognitive Saturation": >
+    Total task demand exceeded the operator's capacity, such as too many tasks at once,
+    time pressure, or simultaneous competing system demands during an emergency.
+  "HumanFactors_Memory Lapse": >
+    Operator intended to perform an action but forgot to do so at the moment of execution.
+    The action was planned but slipped from memory.
+  "HumanFactors_Mental Overload": >
+    Information complexity exceeded the operator's cognitive processing capacity, causing
+    confusion or inability to integrate and reason. Distinct from task-volume overload.
+  "HumanFactors_Emotional State": >
+    An emotional condition, such as anxiety, frustration, anger, overconfidence, or fear,
+    negatively influenced the operator's performance or decision-making.
+  "HumanFactors_Decision Making / Judgment": >
+    Operator made a poor or unsafe decision, or exercised flawed judgment, such as choosing
+    the wrong course of action, continuing into deteriorating conditions, or failing to act when required.
+  "HumanFactors_Risk Assessment": >
+    Operator failed to adequately identify, evaluate, or account for the risks of a situation
+    or planned action. Includes failing to recognize a hazard or underestimating its severity.
+  "HumanFactors_Prioritization Failure": >
+    Operator failed to order tasks by importance, causing critical tasks to be neglected
+    or delayed in favor of lower-priority ones.
+  "HumanFactors_Inadequate Planning": >
+    Operator failed to adequately plan the task or flight before execution, missing
+    requirements, contingencies, equipment needs, or procedural steps.
+  "HumanFactors_Mission Complexity Mismanagement": >
+    The complexity or scope of the mission was underestimated or not adequately managed,
+    resulting in the operator being overwhelmed by what the task actually demanded.
+  "HumanFactors_Coordination Failure": >
+    Individuals or teams failed to coordinate actions, intentions, or roles, creating gaps,
+    overlaps, or conflicting actions around who does what and when.
+  "HumanFactors_Maintenance Coordination": >
+    Coordination failure specific to maintenance, between technicians, shifts, departments,
+    or between maintenance and flight operations.
+  "HumanFactors_Verification Failure": >
+    Operator failed to verify or cross-check a critical state or completed action before
+    proceeding. A required check was omitted entirely.
+  "HumanFactors_Monitoring Failure": >
+    Operator failed to maintain adequate vigilance of systems, instruments, or the
+    environment during an ongoing operation.
+  "HumanFactors_Information Transfer Failure": >
+    Critical information was not communicated or was lost when moving between people,
+    shifts, crews, or phases of operation.
+  "Contributing_Visual Limitation": >
+    Reduced visibility from weather, darkness, glare, or obstructions prevented the
+    operator from seeing critical elements.
+  "Contributing_Lighting Condition": >
+    Inadequate illumination, glare, or abrupt lighting transition made it difficult
+    to see or detect a relevant element.
+  "Contributing_Terrain / Obstacle Environment": >
+    Terrain, obstacles, or airspace geometry limited options, reduced margins, or
+    demanded disproportionate operator attention.
+  "Contributing_Operational Complexity": >
+    Overall complexity of the operational environment, such as airspace, traffic, weather,
+    or multi-leg routing, contributed beyond any single element.
+  "Contributing_Unresolved Maintenance Issue": >
+    A specific, identified maintenance deficiency or open action item existed at the
+    time of the incident and had not been corrected.
+  "Contributing_Documentation Issue": >
+    Written documentation was missing, incorrect, ambiguous, or outdated and
+    contributed structurally to the incident.
+  "Contributing_Workflow Design": >
+    Design of the work process or task sequence made the error easy to commit through
+    illogical sequencing or flows that predictably produce omissions.
+  "HumanFactors_Checklist Compliance": >
+    Operator failed to properly use a required checklist, such as skipping items,
+    completing from memory, reading without performing, or using the wrong checklist.
+  "HumanFactors_Operational Pressure": >
+    External pressure from schedule, management, or commercial demands influenced the
+    operator to accept greater risk or make unsafe choices.

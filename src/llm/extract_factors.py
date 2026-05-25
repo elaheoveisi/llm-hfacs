@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import json
 import os
+import random
+import re
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
@@ -10,6 +12,15 @@ import openai
 import pandas as pd
 import yaml
 from tqdm import tqdm
+
+
+def _retry_delay(error: Exception, attempt: int, llm_cfg: dict) -> float:
+    """Prefer OpenAI's suggested wait, then add a small stagger for parallel calls."""
+    retry_wait = float(llm_cfg["retry_wait"])
+    match = re.search(r"try again in ([0-9.]+)s", str(error), flags=re.IGNORECASE)
+    if match:
+        return float(match.group(1)) + retry_wait + random.uniform(0.25, 1.25)
+    return retry_wait * attempt + random.uniform(0.25, 1.25)
 
 
 def _build_prompt_parts(cols: list[str], factor_defs: dict[str, str]) -> tuple[str, str]:
@@ -40,7 +51,7 @@ def _call_llm(client, msgs: list, llm_cfg: dict) -> str:
                 raise RuntimeError(f"Quota exhausted — add credits at platform.openai.com\n{e}") from e
             if attempt == retries:
                 raise
-            time.sleep(int(llm_cfg["retry_wait"]) * attempt)
+            time.sleep(_retry_delay(e, attempt, llm_cfg))
 
 
 def run(config: dict) -> None:
@@ -96,6 +107,8 @@ def run(config: dict) -> None:
             raw = _call_llm(client, msgs, llm_cfg)
             data = json.loads(raw)
             return i, {col: int(bool(data.get(col, 0))) for col in new_cols}
+        except (openai.RateLimitError, openai.APIConnectionError, openai.APITimeoutError):
+            raise
         except Exception as e:
             print(f"\n[WARN] Row {i} failed ({type(e).__name__}): {e}")
             return i, {col: 0 for col in new_cols}

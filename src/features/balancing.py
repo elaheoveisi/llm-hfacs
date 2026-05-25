@@ -26,13 +26,13 @@ def balance_features_labels(
 
 
 def balance_and_report(
-    X_train: pd.DataFrame, y_train: pd.Series
+    X_train: pd.DataFrame, y_train: pd.Series, split_name: str = "train"
 ) -> Tuple[pd.DataFrame, pd.Series]:
-    print("\nClass distribution before balancing (train only):")
+    print(f"\nClass distribution before balancing ({split_name}):")
     for cls, count in y_train.value_counts().sort_index().items():
         print(f"  Class {cls}: {count} cases")
     X_train, y_train = balance_features_labels(X_train, y_train)
-    print("\nClass distribution after balancing (train only):")
+    print(f"\nClass distribution after balancing ({split_name}):")
     for cls, count in y_train.value_counts().sort_index().items():
         print(f"  Class {cls}: {count} cases")
     return X_train, y_train
