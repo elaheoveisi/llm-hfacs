@@ -87,6 +87,22 @@ def get_hfacs_feature_cols(config: dict) -> List[str]:
     ]
 
 
+def resolve_feature_cols(config: dict, df: pd.DataFrame, context: str = "") -> List[str]:
+    """Return only the config-defined feature columns that exist in df.
+
+    Prints a warning listing any columns that were defined in the config but
+    are absent from the dataset — so silent feature drops are always visible.
+    """
+    defined = get_hfacs_feature_cols(config)
+    missing = [c for c in defined if c not in df.columns]
+    if missing:
+        tag = f" [{context}]" if context else ""
+        print(f"\n⚠ WARNING{tag}: {len(missing)} config feature(s) not found in dataset and will be skipped:")
+        for c in missing:
+            print(f"    - {c}")
+    return [c for c in defined if c in df.columns]
+
+
 def filter_tied_rows(
     df: pd.DataFrame,
     y3: pd.Series,
