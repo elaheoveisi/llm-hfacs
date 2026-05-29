@@ -6,7 +6,9 @@ import pandas as pd
 
 
 def _reader(path):
-    return pd.read_csv if Path(path).suffix.lower() == ".csv" else pd.read_excel
+    if Path(path).suffix.lower() == ".csv":
+        return lambda p, **kw: pd.read_csv(p, low_memory=False, **kw)
+    return pd.read_excel
 
 
 def flatten(x: dict) -> dict:

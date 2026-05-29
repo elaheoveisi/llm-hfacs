@@ -1,23 +1,26 @@
 ﻿llm:
-  api_key: 
-  input: GAHFACS_Version3_undersampled.xlsx
-  prompt: extract_and_classify # yaml file name (without .yaml) in src/llm/prompts/GHFACS/
-  default_prompt: extract_and_classify
+  api_key: null  # set OPENAI_API_KEY env var instead
+  input: balanced_processed_output_undersampled.csv
+  prompt: classify_direct # yaml file name (without .yaml) in src/llm/prompts/ASRS/
+  default_prompt: classify_direct
   model: gpt-4o-mini
-  mode: sync # sync, batch_submit, batch_retrieve
-  batch_id: null # used only when mode=batch_retrieve
-  limit: null  # null for all rows
+  mode: sync # sync, batch_submit, batch_retrieve, evaluate
+  limit: 200  # null for all rows
   compact: false
   evaluate: true # print accuracy + confusion matrix after classification
-  retry_wait: 10 # seconds added to provider-suggested waits
-  max_retries: 8
-  workers: 5 # concurrent API requests; keep low to avoid TPM rate-limit bursts
-  narrative_column: narr_accf
+  retry_wait: 5 # seconds added to provider-suggested waits
+  max_retries: 12
+  workers: 10 # concurrent API requests (lower = fewer TPM rate-limit collisions)
+  narrative_column: 'Report 1_Narrative'
+  metadata_columns:
+    - 'Events_Anomaly'
+    - 'Person 1_Human Factors'
+    - 'Assessments_Contributing Factors / Situations'
   classes:
-    - 'AE100 only'
-    - 'AE200 only'
-    - 'Both'
+    - 'Error'
+    - 'Violation'
     - 'Neither'
+    - 'Both'
   json_models:
     - gpt-4o
     - gpt-4o-mini
@@ -30,12 +33,12 @@
     - Codes_Selected
     - Final_Justification
     - Confidence
-  ground_truth_columns: [AE100, AE200]
+  ground_truth_columns: [category]
 
 paths:
-  ghfacs_data_dir: 'data/GHFACS'
-  llm_output_dir: 'data/GHFACS'
-  prompts_dir: 'src/llm/prompts/GHFACS'
+  ghfacs_data_dir: 'data/intermediate'
+  llm_output_dir: 'data/intermediate'
+  prompts_dir: 'src/llm/prompts/ASRS'
   processed_data: 'data/processed/'
   undersampled_csv: 'data/GHFACS/GAHFACS_Version3.xlsx'
   raw_data_dir: 'data/raw'
@@ -43,7 +46,11 @@ paths:
   new_features_csv: 'data/intermediate/sampled_75_per_class_new_features.csv'
   processed_excel: 'data/intermediate/processed_output.xlsx'
   svm_output_dir: 'data/processed/svm'
+  svm_classify_output_dir: 'data/processed/svm_classify'
   rf_output_dir: 'data/processed/rf'
+  rf_classify_source: 'data/intermediate/processed_output.csv'
+  rf_classify_input: 'data/intermediate/balanced_processed_output.csv'
+  balanced_processed_output: 'data/intermediate/balanced_processed_output.csv'
   rf_new_features_output_dir: 'data/processed/rf_new_features'
   ghfacs_svm_output_dir: 'data/processed/ghfacs_svm'
   dag_output_dir: 'data/processed'
@@ -112,46 +119,72 @@ hfacs_categories:
     - Contributing_Airport
     - Contributing_Airspace Structure
 
-  Cognitive_and_Attention_Factors:
-    - HumanFactors_Complacency / Expectation Bias
-    - HumanFactors_Attention Failure
-    - HumanFactors_Workload / Cognitive Saturation
-    - HumanFactors_Memory Lapse
-    - HumanFactors_Mental Overload
-    - HumanFactors_Emotional State
+  # Cognitive_and_Attention_Factors:
+  # - HumanFactors_Complacency / Expectation Bias
+  #   - HumanFactors_Attention Failure
+  #   - HumanFactors_Workload / Cognitive Saturation
+  #   - HumanFactors_Memory Lapse
+  #   - HumanFactors_Mental Overload
+  #   - HumanFactors_Emotional State
 
-  Decision_and_Planning_Factors:
-    - HumanFactors_Decision Making / Judgment
-    - HumanFactors_Risk Assessment
-    - HumanFactors_Prioritization Failure
-    - HumanFactors_Inadequate Planning
-    - HumanFactors_Mission Complexity Mismanagement
+  # Decision_and_Planning_Factors:
+  #   - HumanFactors_Decision Making / Judgment
+  #   - HumanFactors_Risk Assessment
+  #   - HumanFactors_Prioritization Failure
+  #   - HumanFactors_Inadequate Planning
+  #   - HumanFactors_Rushed Operation
+  #   - HumanFactors_Improper Task Allocation
+  #   - HumanFactors_Mission Complexity Mismanagement
 
-  Coordination_and_Communication_Factors:
-    - HumanFactors_Coordination Failure
-    - HumanFactors_Maintenance Coordination
-    - HumanFactors_Verification Failure
-    - HumanFactors_Monitoring Failure
-    - HumanFactors_Information Transfer Failure
+  # Coordination_and_Communication_Factors:
+  #   - HumanFactors_Coordination Failure
+  #   - HumanFactors_Maintenance Coordination
+  #   - HumanFactors_Task Management
+  #   - HumanFactors_Verification Failure
+  #   - HumanFactors_Monitoring Failure
+  #   - HumanFactors_Information Transfer Failure
 
-  Environmental_and_Operational_Context:
-    - Contributing_Visual Limitation
-    - Contributing_Lighting Condition
-    - Contributing_Terrain / Obstacle Environment
-    - Contributing_Operational Complexity
+  # Automation_and_Interface_Factors:
+  #   - HumanFactors_Automation Reliance
+  #   - HumanFactors_Automation Misinterpretation
+  #   - Contributing_Interface Design
+  #   - Contributing_Alerting System Design
+  #   - Contributing_System Integration Issue
 
+  # Environmental_and_Operational_Context:
+  #   - Contributing_Visual Limitation
+  #   - Contributing_Lighting Condition
+  #   - Contributing_Noise / Environmental Stressor
+  #   - Contributing_Terrain / Obstacle Environment
+  #   - Contributing_Workspace Layout
+  #   - Contributing_Operational Complexity
 
-  Maintenance_and_Safety_Control_Failures:
-    - Contributing_Unresolved Maintenance Issue
+  # Supervision_and_Organizational_Deficiencies:
+  #   - Contributing_Inadequate Oversight
+  #   - Contributing_Poor Supervision
+  #   - Contributing_Insufficient Operational Support
+  #   - Contributing_Inadequate Resource Allocation
+  #   - Contributing_Unsafe Organizational Practice
+  #   - Contributing_Policy Noncompliance
+  #   - Contributing_Procedural Deviation Acceptance
+  #   - Contributing_Normalization of Deviance
 
-  Information_and_Workflow_Processes:
-    - Contributing_Documentation Issue
-    - Contributing_Workflow Design
+  # Maintenance_and_Safety_Control_Failures:
+  #   - Contributing_Unresolved Maintenance Issue
+  #   - Contributing_Repeated Known Problem
+  #   - Contributing_Failure to Correct Hazard
+  #   - Contributing_Unaddressed Safety Risk
 
-  Procedure_and_Compliance_Factors:
-    - HumanFactors_Checklist Compliance
-    - HumanFactors_Operational Pressure
-  
+  # Information_and_Workflow_Processes:
+  #   - Contributing_Data Entry Error
+  #   - Contributing_Documentation Issue
+  #   - Contributing_Information Availability
+  #   - Contributing_Resource Limitation
+  #   - Contributing_Workflow Design
+
+  # Procedure_and_Compliance_Factors:
+  #   - HumanFactors_Checklist Compliance
+  #   - HumanFactors_Operational Pressure
 
   Error:
     'Anomaly_Conflict Airborne Conflict': 5
@@ -161,7 +194,7 @@ hfacs_categories:
     'Anomaly_Deviation - Altitude Overshoot': 2
     'Anomaly_Deviation - Altitude Undershoot': 2
     'Anomaly_Deviation - Speed All Types': 2
-    'Anomaly_Deviation - Track / Heading All Types': 2
+    'Anomaly_Deviation - Track / Heading All Types': 2 
     'Anomaly_Inflight Event / Encounter Loss Of Aircraft Control': 5
     'Anomaly_Ground Event / Encounter Loss Of Aircraft Control': 5
     'Anomaly_Inflight Event / Encounter VFR In IMC': 5
@@ -177,10 +210,10 @@ hfacs_categories:
     'Anomaly_Deviation / Discrepancy - Procedural FAR': 5
     'Anomaly_Deviation / Discrepancy - Procedural Hazardous Material Violation': 5
     'Anomaly_Deviation / Discrepancy - Procedural Landing Without Clearance': 5
-    'Anomaly_Deviation / Discrepancy - Procedural Maintenance': 4
+    'Anomaly_Deviation / Discrepancy - Procedural Maintenance': 4  # ambiguous: covers unintentional acts
     'Anomaly_Deviation / Discrepancy - Procedural MEL / CDL': 4
     'Anomaly_Deviation / Discrepancy - Procedural Other / Unknown': 2
-    'Anomaly_Deviation / Discrepancy - Procedural Published Material / Policy': 3
+    'Anomaly_Deviation / Discrepancy - Procedural Published Material / Policy': 6  # ambiguous: covers unintentional acts
     'Anomaly_Deviation / Discrepancy - Procedural Unauthorized Flight Operations (UAS)': 5
     'Anomaly_Deviation / Discrepancy - Procedural Weight And Balance': 4
     'Anomaly_Flight Deck / Cabin / Aircraft Event Passenger Misconduct': 2
@@ -230,9 +263,17 @@ models:
     cores: 1
 
   rf:
+    test_size: 0.2
+    n_iter: 200
+    n_estimators: [100, 200, 300, 500, 800, 1000]
+    max_depth: [null, 5, 10, 15, 20, 30, 50]
+    min_samples_split: [2, 5, 10, 15, 20]
+    min_samples_leaf: [1, 2, 4, 8]
+    max_features: [sqrt, log2, null]
+    cv_splits: 5
+
+  svm_classify:
     test_size: 0.15
-    n_estimators: [100, 200, 500]
-    max_depth: [null, 5, 10, 20]
-    min_samples_split: [2, 5, 10]
-    max_features: [sqrt, log2]
+    C: [0.1, 1, 10, 100]
+    gamma: [scale, auto]
     cv_splits: 5

@@ -15,6 +15,7 @@ from sklearn.metrics import accuracy_score, classification_report, confusion_mat
 from tqdm import tqdm
 
 from llm.utils import _reader, finals, flatten, four_class
+from models.random_forest_classify import make_four_class_target_from_config
 
 
 def _retry_delay(error: Exception, attempt: int, llm_cfg: dict) -> float:
@@ -55,21 +56,115 @@ def call_llm(client, msgs: list, llm_cfg: dict, prm: dict) -> str:
             time.sleep(_retry_delay(e, i, llm_cfg))
 
 
+def _clean_prompt_value(value) -> str:
+    if pd.isna(value):
+        return "Not provided"
+    text = str(value).strip()
+    if text.lower() in {"", "nan", "none", "null"}:
+        return "Not provided"
+    return text
+
+
+def _active_config_signals(row: pd.Series, config: dict | None) -> dict[str, list[str]]:
+    if not config:
+        return {"Error": [], "Violation": []}
+    categories = config.get("hfacs_categories", {})
+    active = {"Error": [], "Violation": []}
+    for group in active:
+        signals = categories.get(group, {})
+        for col, weight in signals.items():
+            if col not in row.index:
+                continue
+            value = pd.to_numeric(pd.Series([row[col]]), errors="coerce").fillna(0).iloc[0]
+            if value > 0:
+                active[group].append(f"{col} (weight {weight})")
+    return active
+
+
+def _format_config_signal_context(row: pd.Series, config: dict | None) -> str:
+    active = _active_config_signals(row, config)
+    has_error = bool(active["Error"])
+    has_violation = bool(active["Violation"])
+
+    if has_error and has_violation:
+        derived = "Both"
+    elif has_error:
+        derived = "Error"
+    elif has_violation:
+        derived = "Violation"
+    else:
+        derived = "Neither"
+
+    def _lines(group: str) -> str:
+        if not active[group]:
+            return "- none"
+        return "\n".join(f"- {item}" for item in active[group])
+
+    return (
+        "Configured category signals from config.yaml:\n"
+        "Active Error signals:\n"
+        f"{_lines('Error')}\n"
+        "Active Violation signals:\n"
+        f"{_lines('Violation')}\n"
+        f"Config-derived class from active signals: {derived}"
+    )
+
+
+def _format_metadata_context(row: pd.Series, columns: list[str], config: dict | None = None) -> str:
+    lines = []
+    for col in columns:
+        value = row[col] if col in row.index else "Not available"
+        lines.append(f"{col}: {_clean_prompt_value(value)}")
+    if not lines:
+        lines.append("No raw metadata columns configured.")
+    lines.append("")
+    lines.append(_format_config_signal_context(row, config))
+    return "\n".join(lines)
+
+
+def _render_prompt(template: str, narrative: str, metadata_context: str) -> str:
+    return (
+        template
+        .replace("{narrative}", narrative)
+        .replace("{metadata_context}", metadata_context)
+    )
+
+
 def evaluate_labels(
-    llm_out: Path, gt_path: Path, llm_cfg: dict, classes: list[str]
+    llm_out: Path, gt_path: Path, llm_cfg: dict, classes: list[str], config: dict | None = None
 ) -> pd.DataFrame:
     llm_df = pd.read_csv(llm_out, keep_default_na=False, na_values=[""])
     gt_cols = llm_cfg["ground_truth_columns"]
-    gt = (
-        _reader(gt_path)(gt_path)[gt_cols]
-        .reset_index()
-        .rename(columns={"index": "original_index"})
-    )
-    merged = llm_df.merge(gt, on="original_index", how="inner")
-    if merged.empty:
-        raise ValueError(
-            "No rows matched between LLM output and ground truth — check original_index alignment."
+    gt_df = _reader(gt_path)(gt_path)
+
+    if len(gt_cols) == 1 and gt_cols[0] in gt_df.columns:
+        gt = gt_df[gt_cols].reset_index().rename(columns={"index": "original_index"})
+        merged = llm_df.merge(gt, on="original_index", how="inner")
+        if merged.empty:
+            raise ValueError(
+                "No rows matched between LLM output and ground truth — check original_index alignment."
+            )
+        merged["y_true"] = merged[gt_cols[0]].astype(str).str.strip()
+    elif config is not None:
+        gt = gt_df.reset_index().rename(columns={"index": "original_index"})
+        merged = llm_df.merge(gt, on="original_index", how="inner")
+        if merged.empty:
+            raise ValueError(
+                "No rows matched between LLM output and ground truth — check original_index alignment."
+            )
+        label_names = {0: classes[3], 1: classes[0], 2: classes[1], 3: classes[2]}
+        merged["y_true"] = make_four_class_target_from_config(merged, config).map(label_names)
+    else:
+        gt = gt_df[gt_cols].reset_index().rename(columns={"index": "original_index"})
+        merged = llm_df.merge(gt, on="original_index", how="inner")
+        if merged.empty:
+            raise ValueError(
+                "No rows matched between LLM output and ground truth — check original_index alignment."
+            )
+        merged["y_true"] = merged.apply(
+            lambda r: four_class(*[r[c] == c for c in gt_cols], classes), axis=1
         )
+
     class_col = next(
         (c for c in ("Final_Class", "Final_HFACS_Code") if c in merged.columns), None
     )
@@ -82,10 +177,6 @@ def evaluate_labels(
         alias: cls for cls in classes for alias in (cls.lower(), cls.lower().split()[0])
     }
     _lookup |= {"multiple": _lookup.get("both"), "none": _lookup.get("neither")}
-
-    merged["y_true"] = merged.apply(
-        lambda r: four_class(*[r[c] == c for c in gt_cols], classes), axis=1
-    )
     merged["y_pred"] = merged[class_col].apply(
         lambda v: _lookup.get(str(v).strip().lower()) if not pd.isna(v) else None
     )
@@ -122,7 +213,7 @@ def evaluate_labels(
 def _run_sync(
     client, df: pd.DataFrame, tasks: list, llm_cfg: dict, prm: dict,
     narr: str, final_cols: set, compact: bool, prompt_name: str, out: Path,
-    inp_path: Path, classes: list[str],
+    inp_path: Path, classes: list[str], config: dict | None = None,
 ) -> None:
     sys_p = prm.get("system_prompt", prm.get("system", ""))
     step2_t = prm.get("step2_prompt")
@@ -135,12 +226,15 @@ def _run_sync(
             {"role": "user", "content": content}
         ]
 
-    def process(i: int, n: str) -> tuple:
+    def process(i: int, n: str, metadata_context: str) -> tuple:
         if not n or n.lower() in {"nan", "none", ""}:
             return i, {"original_index": i, "skip_reason": "empty_narrative"}
         try:
             step1_out = call_llm(
-                client, build_msgs(usr_t.replace("{narrative}", n)), llm_cfg, prm
+                client,
+                build_msgs(_render_prompt(usr_t, n, metadata_context)),
+                llm_cfg,
+                prm,
             )
             raw = (
                 call_llm(
@@ -171,7 +265,7 @@ def _run_sync(
 
     _save_output(results, out)
     if llm_cfg["evaluate"]:
-        evaluate_labels(out, inp_path, llm_cfg, classes)
+        evaluate_labels(out, inp_path, llm_cfg, classes, config)
 
 
 # ---------------------------------------------------------------------------
@@ -201,12 +295,12 @@ def _run_batch_submit(
         ]
 
     lines = []
-    for i, n in tasks:
+    for i, n, metadata_context in tasks:
         if not n or n.lower() in {"nan", "none", ""}:
             continue
         body: dict = {
             "model": model,
-            "messages": build_msgs(usr_t.replace("{narrative}", n)),
+            "messages": build_msgs(_render_prompt(usr_t, n, metadata_context)),
         }
         if model not in no_temp_models:
             body["temperature"] = float(prm.get("temperature", 0.0))
@@ -246,7 +340,7 @@ def _run_batch_submit(
 def _run_batch_retrieve(
     client, df: pd.DataFrame, llm_cfg: dict, narr: str,
     final_cols: set, compact: bool, out: Path,
-    inp_path: Path, classes: list[str],
+    inp_path: Path, classes: list[str], config: dict | None = None,
 ) -> None:
     batch_id = llm_cfg.get("batch_id") or None
     if not batch_id:
@@ -292,7 +386,7 @@ def _run_batch_retrieve(
 
     _save_output(results, out)
     if llm_cfg["evaluate"]:
-        evaluate_labels(out, inp_path, llm_cfg, classes)
+        evaluate_labels(out, inp_path, llm_cfg, classes, config)
 
 
 # ---------------------------------------------------------------------------
@@ -326,7 +420,7 @@ def run(config: dict) -> None:
     mode = llm_cfg["mode"]
 
     if mode == "evaluate":
-        evaluate_labels(out, inp_path, llm_cfg, classes)
+        evaluate_labels(out, inp_path, llm_cfg, classes, config)
         return
 
     key = (llm_cfg["api_key"] or os.getenv("OPENAI_API_KEY", "")).strip()
@@ -341,7 +435,7 @@ def run(config: dict) -> None:
         df = _reader(inp_path)(inp_path)
         _run_batch_retrieve(
             client, df, llm_cfg, narr,
-            set(llm_cfg["output_columns"]), compact, out, inp_path, classes,
+            set(llm_cfg["output_columns"]), compact, out, inp_path, classes, config,
         )
         return
 
@@ -354,9 +448,19 @@ def run(config: dict) -> None:
     if narr not in df.columns:
         raise ValueError(f"Missing narrative column '{narr}' in {inp_path}.")
 
+    metadata_cols = llm_cfg.get("metadata_columns", [])
+    ground_truth_cols = set(llm_cfg.get("ground_truth_columns", []))
+    metadata_cols = [
+        c for c in metadata_cols
+        if c != narr and c not in ground_truth_cols
+    ]
+
     _lim = llm_cfg["limit"]
     subset = df.head(int(_lim)) if _lim not in (None, "", "none", "null") else df
-    tasks = [(i, str(r[narr]).strip()) for i, r in subset.iterrows()]
+    tasks = [
+        (i, str(r[narr]).strip(), _format_metadata_context(r, metadata_cols, config))
+        for i, r in subset.iterrows()
+    ]
     final_cols = set(llm_cfg["output_columns"])
 
     if mode == "batch_submit":
@@ -364,5 +468,5 @@ def run(config: dict) -> None:
     else:
         _run_sync(
             client, df, tasks, llm_cfg, prm, narr,
-            final_cols, compact, prompt_name, out, inp_path, classes,
+            final_cols, compact, prompt_name, out, inp_path, classes, config,
         )

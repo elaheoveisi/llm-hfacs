@@ -21,10 +21,12 @@ from models.ghfacs import (
 )
 from models.hfacs import random_forest as run_rf
 from models.hfacs import svm as run_svm
+from models.random_forest_classify import random_forest_classify as run_rf_classify
+from models.svm_classify import svm_classify as run_svm_classify
 
 from utils import skip_run
 
-from data.dataset import build_processed_dataset, undersample_ae100
+from data.dataset import build_balanced_dataset, build_processed_dataset, undersample_ae100
 
 with open("configs/config.yaml", "r") as f:
     config = yaml.safe_load(f)
@@ -38,6 +40,9 @@ with skip_run("skip", "load_raw_dataset") as check, check():
 with skip_run("skip", "undersampled_dataset") as check, check():
     df = undersample_ae100(config)
 
+with skip_run("skip", "balanced_dataset") as check, check():
+    build_balanced_dataset(config)
+
 with skip_run("skip", "eda") as check, check():
     eda_output_dir = Path(config["paths"]["eda_output_dir"])
     df_eda = read_table(default_input_from_config(config))
@@ -50,7 +55,7 @@ with skip_run("skip", "svm") as check, check():
     df = load_dataset(config["paths"]["processed_csv"])
     run_svm(config, df)
 
-with skip_run("run", "rf") as check, check():
+with skip_run("skip", "rf") as check, check():
     run_rf(config)
 
 #with skip_run("skip", "rf_new_features") as check, check():
@@ -83,5 +88,11 @@ with skip_run("skip", "ghfacs_svm_no_rs") as check, check():
 with skip_run("skip", "extract_factors") as check, check():
     run_extract_factors(config)
 
-with skip_run("skip", "classify") as check, check():
+with skip_run("run", "classify") as check, check():
     run_classify(config)
+
+with skip_run("skip", "rf_classify") as check, check():
+    run_rf_classify(config)
+
+with skip_run("skip", "svm_classify") as check, check():
+    run_svm_classify(config)

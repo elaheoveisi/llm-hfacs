@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.inspection import permutation_importance
 from sklearn.model_selection import GridSearchCV, StratifiedKFold
 
 from features.balancing import balance_and_report

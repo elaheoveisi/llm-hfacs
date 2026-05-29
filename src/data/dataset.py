@@ -4,7 +4,8 @@ from pathlib import Path
 import pandas as pd
 import polars as pl
 
-from features.utils import make_four_class_target
+from features.utils import load_dataset, make_four_class_target
+from models.random_forest_classify import make_four_class_target_from_config
 
 
 def load_raw_dataset(raw_dir):
@@ -88,6 +89,41 @@ def build_processed_dataset(config):
     df.write_excel(excel_path)
 
     return df.to_pandas()
+
+
+TARGET_VIOLATION_N = 960
+
+
+def build_balanced_dataset(config):
+    input_path = config["paths"]["rf_classify_input"]
+    output_path = config["paths"]["balanced_processed_output"]
+    random_state = config["models"]["random_state"]
+
+    df = load_dataset(input_path)
+    y4 = make_four_class_target_from_config(df, config)
+
+    label_names = {0: "Neither", 1: "Error", 2: "Violation", 3: "Both"}
+    print("\nClass distribution before balancing:")
+    for cls, name in label_names.items():
+        print(f"  {name}: {(y4 == cls).sum()}")
+
+    viol_idx = y4[y4 == 2].index
+    if len(viol_idx) <= TARGET_VIOLATION_N:
+        print(f"\nViolation already has {len(viol_idx)} rows (<= {TARGET_VIOLATION_N}), no drop needed.")
+        return df
+
+    drop_idx = viol_idx.to_series().sample(n=len(viol_idx) - TARGET_VIOLATION_N, random_state=random_state).index
+    df_out = df.drop(index=drop_idx).reset_index(drop=True)
+
+    y_out = make_four_class_target_from_config(df_out, config)
+    print("\nClass distribution after balancing:")
+    for cls, name in label_names.items():
+        print(f"  {name}: {(y_out == cls).sum()}")
+
+    Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+    df_out.to_csv(output_path, index=False)
+    print(f"\nSaved: {output_path}")
+    return df_out
 
 
 TARGET_N = 1400
