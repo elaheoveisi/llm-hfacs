@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import os
 import random
 import re
 import time
@@ -14,7 +13,7 @@ import yaml
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
 from tqdm import tqdm
 
-from llm.utils import _reader, finals, flatten, four_class
+from llm.utils import _reader, finals, flatten, four_class, resolve_openai_api_key
 from models.random_forest_classify import make_four_class_target_from_config
 
 
@@ -40,6 +39,11 @@ def call_llm(client, msgs: list, llm_cfg: dict, prm: dict) -> str:
             if model in json_models:
                 kw["response_format"] = {"type": "json_object"}
             return client.chat.completions.create(**kw).choices[0].message.content
+        except openai.AuthenticationError as e:
+            raise RuntimeError(
+                "OpenAI authentication failed. Check the API key available to this "
+                "Python process; the current run is not using a valid key."
+            ) from e
         except (
             openai.RateLimitError,
             openai.APIConnectionError,
@@ -65,60 +69,11 @@ def _clean_prompt_value(value) -> str:
     return text
 
 
-def _active_config_signals(row: pd.Series, config: dict | None) -> dict[str, list[str]]:
-    if not config:
-        return {"Error": [], "Violation": []}
-    categories = config.get("hfacs_categories", {})
-    active = {"Error": [], "Violation": []}
-    for group in active:
-        signals = categories.get(group, {})
-        for col, weight in signals.items():
-            if col not in row.index:
-                continue
-            value = pd.to_numeric(pd.Series([row[col]]), errors="coerce").fillna(0).iloc[0]
-            if value > 0:
-                active[group].append(f"{col} (weight {weight})")
-    return active
-
-
-def _format_config_signal_context(row: pd.Series, config: dict | None) -> str:
-    active = _active_config_signals(row, config)
-    has_error = bool(active["Error"])
-    has_violation = bool(active["Violation"])
-
-    if has_error and has_violation:
-        derived = "Both"
-    elif has_error:
-        derived = "Error"
-    elif has_violation:
-        derived = "Violation"
-    else:
-        derived = "Neither"
-
-    def _lines(group: str) -> str:
-        if not active[group]:
-            return "- none"
-        return "\n".join(f"- {item}" for item in active[group])
-
-    return (
-        "Configured category signals from config.yaml:\n"
-        "Active Error signals:\n"
-        f"{_lines('Error')}\n"
-        "Active Violation signals:\n"
-        f"{_lines('Violation')}\n"
-        f"Config-derived class from active signals: {derived}"
-    )
-
-
 def _format_metadata_context(row: pd.Series, columns: list[str], config: dict | None = None) -> str:
     lines = []
     for col in columns:
         value = row[col] if col in row.index else "Not available"
         lines.append(f"{col}: {_clean_prompt_value(value)}")
-    if not lines:
-        lines.append("No raw metadata columns configured.")
-    lines.append("")
-    lines.append(_format_config_signal_context(row, config))
     return "\n".join(lines)
 
 
@@ -126,6 +81,7 @@ def _render_prompt(template: str, narrative: str, metadata_context: str) -> str:
     return (
         template
         .replace("{narrative}", narrative)
+        .replace("{report_context}", metadata_context)
         .replace("{metadata_context}", metadata_context)
     )
 
@@ -181,7 +137,10 @@ def evaluate_labels(
         lambda v: _lookup.get(str(v).strip().lower()) if not pd.isna(v) else None
     )
     valid = merged["y_pred"].isin(classes)
-    invalid = merged.loc[~valid, ["original_index", class_col]]
+    invalid_cols = ["original_index", class_col]
+    if "error" in merged.columns:
+        invalid_cols.append("error")
+    invalid = merged.loc[~valid, invalid_cols]
     y_true_v = merged.loc[valid, "y_true"].tolist()
     y_pred_v = merged.loc[valid, "y_pred"].tolist()
 
@@ -423,11 +382,7 @@ def run(config: dict) -> None:
         evaluate_labels(out, inp_path, llm_cfg, classes, config)
         return
 
-    key = (llm_cfg["api_key"] or os.getenv("OPENAI_API_KEY", "")).strip()
-    if not key:
-        raise RuntimeError(
-            "Missing API key. Set llm.api_key in config or OPENAI_API_KEY env var."
-        )
+    key = resolve_openai_api_key(llm_cfg)
     client = openai.OpenAI(api_key=key)
 
     if mode == "batch_retrieve":

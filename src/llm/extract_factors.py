@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import os
 import random
 import re
 import time
@@ -12,6 +11,8 @@ import openai
 import pandas as pd
 import yaml
 from tqdm import tqdm
+
+from llm.utils import resolve_openai_api_key
 
 
 def _retry_delay(error: Exception, attempt: int, llm_cfg: dict) -> float:
@@ -44,6 +45,11 @@ def _call_llm(client, msgs: list, llm_cfg: dict) -> str:
             if model in json_models:
                 kw["response_format"] = {"type": "json_object"}
             return client.chat.completions.create(**kw).choices[0].message.content
+        except openai.AuthenticationError as e:
+            raise RuntimeError(
+                "OpenAI authentication failed. Check the API key available to this "
+                "Python process; the current run is not using a valid key."
+            ) from e
         except (openai.RateLimitError, openai.APIConnectionError, openai.APITimeoutError) as e:
             if isinstance(e, openai.RateLimitError) and (
                 "insufficient_quota" in str(e) or "billing" in str(e).lower()
@@ -86,11 +92,7 @@ def run(config: dict) -> None:
         print(f"  - {c}")
     factors_text, template_json = _build_prompt_parts(new_cols, factor_defs)
 
-    key = (llm_cfg["api_key"] or os.getenv("OPENAI_API_KEY", "")).strip()
-    if not key:
-        raise RuntimeError(
-            "Missing API key. Set llm.api_key in config.yaml or OPENAI_API_KEY env var."
-        )
+    key = resolve_openai_api_key(llm_cfg)
     client = openai.OpenAI(api_key=key)
 
     def process(i: int, narrative: str) -> tuple[int, dict]:

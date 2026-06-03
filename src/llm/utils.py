@@ -1,8 +1,31 @@
 from __future__ import annotations
 
 from pathlib import Path
+import os
+import re
 
 import pandas as pd
+
+
+def resolve_openai_api_key(llm_cfg: dict) -> str:
+    config_key = llm_cfg.get("api_key")
+    source = "llm.api_key" if config_key else "OPENAI_API_KEY"
+    key = (config_key or os.getenv("OPENAI_API_KEY", "")).strip()
+    if not key:
+        raise RuntimeError(
+            "Missing API key. Set llm.api_key in config.yaml or OPENAI_API_KEY env var."
+        )
+    if re.fullmatch(r"sk-[.]+", key) or "..." in key:
+        if not config_key and source == "OPENAI_API_KEY":
+            raise RuntimeError(
+                "llm.api_key is empty in configs/config.yaml, and OPENAI_API_KEY "
+                "is set to a placeholder value. Save a real key in config.yaml or "
+                "replace the OPENAI_API_KEY environment variable."
+            )
+        raise RuntimeError(
+            f"{source} is set to a placeholder value, not a real OpenAI API key."
+        )
+    return key
 
 
 def _reader(path):
