@@ -15,6 +15,7 @@ from visualization.dag_graph import plot_dag
 # Shared DAG utilities
 # ---------------------------------------------------------------------------
 
+
 def _matrix_to_edges(categories, M):
     directed, undirected = [], []
     n = len(categories)
@@ -44,7 +45,9 @@ def _orient_undirected_edges_to_dag(G, undirected_edges, sinks):
     return G
 
 
-def export_dag_outputs(G: nx.DiGraph, output_dir: str, data_path: str | None = None) -> None:
+def export_dag_outputs(
+    G: nx.DiGraph, output_dir: str, data_path: str | None = None
+) -> None:
     outdir = Path(output_dir)
     outdir.mkdir(parents=True, exist_ok=True)
 
@@ -68,7 +71,9 @@ def export_dag_outputs(G: nx.DiGraph, output_dir: str, data_path: str | None = N
             outdir / "learned_dag_conditional_probabilities.csv", index=False
         )
     else:
-        print(f"[WARN] Could not find data file for conditional probabilities: {data_path}")
+        print(
+            f"[WARN] Could not find data file for conditional probabilities: {data_path}"
+        )
 
     nx.to_pandas_adjacency(G, nodelist=list(G.nodes()), weight=None).to_csv(
         outdir / "learned_dag_adjacency_matrix.csv"
@@ -76,6 +81,7 @@ def export_dag_outputs(G: nx.DiGraph, output_dir: str, data_path: str | None = N
 
     try:
         from networkx.drawing.nx_pydot import write_dot
+
         write_dot(G, str(outdir / "learned_dag.dot"))
     except Exception:
         pass
@@ -93,6 +99,7 @@ def export_dag_outputs(G: nx.DiGraph, output_dir: str, data_path: str | None = N
 # ---------------------------------------------------------------------------
 # HFACS 3-class DAG
 # ---------------------------------------------------------------------------
+
 
 def load_hfacs_data(csv_path: str) -> pd.DataFrame:
     df = pd.read_csv(csv_path)
@@ -204,7 +211,11 @@ def run_dag_evaluation(config: dict) -> None:
     print(f"Accuracy: {acc:.4f}")
     print(f"\nConfusion matrix (rows=true, cols=pred) {label_names}:\n{cm}")
     print("\nClassification report:\n")
-    print(classification_report(y3_bal, y_pred, labels=labels, target_names=label_names, digits=4))
+    print(
+        classification_report(
+            y3_bal, y_pred, labels=labels, target_names=label_names, digits=4
+        )
+    )
 
     out = Path(output_dir)
     out.mkdir(parents=True, exist_ok=True)
@@ -222,6 +233,7 @@ def run_dag_evaluation(config: dict) -> None:
 # ---------------------------------------------------------------------------
 # GHFACS 4-class DAG
 # ---------------------------------------------------------------------------
+
 
 def _load_and_binarize(data_path: str, nodes: list[str]) -> pd.DataFrame:
     df = pd.read_excel(data_path)
@@ -279,17 +291,22 @@ def run_ghfacs_dag(config: dict) -> None:
     condprobs = []
     for parent, child in G.edges():
         p_child_given_parent = (
-            df[df[parent] == 1][child].mean() if (df[parent] == 1).any() else float("nan")
+            df[df[parent] == 1][child].mean()
+            if (df[parent] == 1).any()
+            else float("nan")
         )
         p_child_baseline = df[child].mean()
-        condprobs.append({
-            "parent": parent,
-            "child": child,
-            "P(child=1|parent=1)": round(p_child_given_parent, 4),
-            "P(child=1)_baseline": round(p_child_baseline, 4),
-            "lift": round(p_child_given_parent / p_child_baseline, 4)
-            if p_child_baseline > 0 else float("nan"),
-        })
+        condprobs.append(
+            {
+                "parent": parent,
+                "child": child,
+                "P(child=1|parent=1)": round(p_child_given_parent, 4),
+                "P(child=1)_baseline": round(p_child_baseline, 4),
+                "lift": round(p_child_given_parent / p_child_baseline, 4)
+                if p_child_baseline > 0
+                else float("nan"),
+            }
+        )
     pd.DataFrame(condprobs).to_csv(
         out / "ghfacs_dag_conditional_probabilities.csv", index=False
     )
@@ -299,4 +316,6 @@ def run_ghfacs_dag(config: dict) -> None:
     score = record.get("score")
     score_str = str(score) if score is not None else "N/A"
     print(f"[INFO] GES complete. Score={score_str}. Outputs in {output_dir}")
-    (out / "ghfacs_dag_score.txt").write_text(f"GES Score: {score_str}\n", encoding="utf-8")
+    (out / "ghfacs_dag_score.txt").write_text(
+        f"GES Score: {score_str}\n", encoding="utf-8"
+    )

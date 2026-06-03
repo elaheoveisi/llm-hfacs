@@ -58,7 +58,11 @@ def _call_llm(client, msgs: list, llm_cfg: dict) -> str:
             return client.chat.completions.create(**kw).choices[0].message.content
         except openai.AuthenticationError as e:
             raise RuntimeError("OpenAI authentication failed.") from e
-        except (openai.RateLimitError, openai.APIConnectionError, openai.APITimeoutError) as e:
+        except (
+            openai.RateLimitError,
+            openai.APIConnectionError,
+            openai.APITimeoutError,
+        ) as e:
             if isinstance(e, openai.RateLimitError) and (
                 "insufficient_quota" in str(e) or "billing" in str(e).lower()
             ):
@@ -68,7 +72,9 @@ def _call_llm(client, msgs: list, llm_cfg: dict) -> str:
             time.sleep(_retry_delay(e, attempt, llm_cfg))
 
 
-def _evaluate_precondition_extraction(out_df: pd.DataFrame, subset: pd.DataFrame, config: dict) -> None:
+def _evaluate_precondition_extraction(
+    out_df: pd.DataFrame, subset: pd.DataFrame, config: dict
+) -> None:
     from sklearn.metrics import classification_report
 
     items = _get_items(config)
@@ -83,10 +89,14 @@ def _evaluate_precondition_extraction(out_df: pd.DataFrame, subset: pd.DataFrame
         if item not in subset.columns or llm_col not in out_df.columns:
             continue
         y_pred = out_df[llm_col].fillna(0).astype(int)
-        y_true = (subset[item].apply(pd.to_numeric, errors="coerce").fillna(0) > 0).astype(int)
+        y_true = (
+            subset[item].apply(pd.to_numeric, errors="coerce").fillna(0) > 0
+        ).astype(int)
         item_accs[item] = accuracy_score(y_true, y_pred)
         item_f1s[item] = f1_score(y_true, y_pred, average="macro", zero_division=0)
-        print(f"\n{item}  (accuracy={item_accs[item]:.4f}  macro-f1={item_f1s[item]:.4f})")
+        print(
+            f"\n{item}  (accuracy={item_accs[item]:.4f}  macro-f1={item_f1s[item]:.4f})"
+        )
         print(classification_report(y_true, y_pred, labels=[0, 1], zero_division=0))
 
     # Category-level summary
@@ -97,17 +107,19 @@ def _evaluate_precondition_extraction(out_df: pd.DataFrame, subset: pd.DataFrame
     all_accs, all_f1s = [], []
     for cat, cat_items in cat_map.items():
         accs = [item_accs[i] for i in cat_items if i in item_accs]
-        f1s  = [item_f1s[i]  for i in cat_items if i in item_f1s]
+        f1s = [item_f1s[i] for i in cat_items if i in item_f1s]
         if not accs:
             continue
         avg_acc = sum(accs) / len(accs)
-        avg_f1  = sum(f1s)  / len(f1s)
+        avg_f1 = sum(f1s) / len(f1s)
         all_accs.extend(accs)
         all_f1s.extend(f1s)
         print(f"{cat:<40} {len(accs):>5}  {avg_acc:>8.4f}  {avg_f1:>8.4f}")
     if all_accs:
         print("-" * len(header))
-        print(f"{'Overall':<40} {len(all_accs):>5}  {sum(all_accs)/len(all_accs):>8.4f}  {sum(all_f1s)/len(all_f1s):>8.4f}")
+        print(
+            f"{'Overall':<40} {len(all_accs):>5}  {sum(all_accs)/len(all_accs):>8.4f}  {sum(all_f1s)/len(all_f1s):>8.4f}"
+        )
 
 
 def run_extract_preconditions(config: dict) -> None:
@@ -141,12 +153,16 @@ def run_extract_preconditions(config: dict) -> None:
     items = _get_items(config)
     # Build factors block: use description from YAML if available, else just the name
     factors_block = "\n".join(
-        f"  - {item}: {factor_defs[item].strip()}" if item in factor_defs else f"  - {item}"
+        f"  - {item}: {factor_defs[item].strip()}"
+        if item in factor_defs
+        else f"  - {item}"
         for item in items
     )
     template_json = json.dumps({item: 0 for item in items}, indent=2)
 
-    print(f"[INFO] Extracting {len(items)} individual HFACS precondition columns via LLM")
+    print(
+        f"[INFO] Extracting {len(items)} individual HFACS precondition columns via LLM"
+    )
 
     key = resolve_openai_api_key(llm_cfg)
     client = openai.OpenAI(api_key=key)
@@ -155,8 +171,7 @@ def run_extract_preconditions(config: dict) -> None:
         if not narrative or narrative.lower() in {"nan", "none", ""}:
             return i, {item: 0 for item in items}
         prompt = (
-            usr_t
-            .replace("{factors}", factors_block)
+            usr_t.replace("{factors}", factors_block)
             .replace("{template}", template_json)
             .replace("{narrative}", narrative)
         )
@@ -168,7 +183,11 @@ def run_extract_preconditions(config: dict) -> None:
             raw = _call_llm(client, msgs, llm_cfg)
             data = json.loads(raw)
             return i, {item: int(bool(data.get(item, 0))) for item in items}
-        except (openai.RateLimitError, openai.APIConnectionError, openai.APITimeoutError):
+        except (
+            openai.RateLimitError,
+            openai.APIConnectionError,
+            openai.APITimeoutError,
+        ):
             raise
         except Exception as e:
             print(f"\n[WARN] Row {i} failed ({type(e).__name__}): {e}")
@@ -181,7 +200,9 @@ def run_extract_preconditions(config: dict) -> None:
     results: dict = {}
     with ThreadPoolExecutor(max_workers=int(llm_cfg["workers"])) as executor:
         futures = {executor.submit(process, *t): t[0] for t in tasks}
-        for f in tqdm(as_completed(futures), total=len(futures), desc="[extract_preconditions]"):
+        for f in tqdm(
+            as_completed(futures), total=len(futures), desc="[extract_preconditions]"
+        ):
             i, row_data = f.result()
             results[i] = row_data
 
@@ -195,5 +216,7 @@ def run_extract_preconditions(config: dict) -> None:
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_df.to_csv(out_path, index=False, encoding="utf-8-sig")
-    print(f"\n[INFO] Saved {len(out_df)} rows × {len(out_df.columns)} columns to: {out_path}")
+    print(
+        f"\n[INFO] Saved {len(out_df)} rows × {len(out_df.columns)} columns to: {out_path}"
+    )
     print(f"[INFO] LLM feature columns: {[f'llm_{c}' for c in items]}")

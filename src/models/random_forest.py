@@ -23,15 +23,17 @@ def make_four_class_target_from_config(df: pd.DataFrame, config: dict) -> pd.Ser
         present = [c for c in cols if c in df.columns]
         if not present:
             return pd.Series(False, index=df.index)
-        return (df[present].apply(pd.to_numeric, errors="coerce").fillna(0) > 0).any(axis=1)
+        return (df[present].apply(pd.to_numeric, errors="coerce").fillna(0) > 0).any(
+            axis=1
+        )
 
     has_error = _active(error_cols)
     has_viol = _active(viol_cols)
 
     y = pd.Series(0, index=df.index, dtype=int)
-    y[has_error & ~has_viol] = 1   # Error only
-    y[~has_error & has_viol] = 2   # Violation only
-    y[has_error & has_viol] = 3    # Both
+    y[has_error & ~has_viol] = 1  # Error only
+    y[~has_error & has_viol] = 2  # Violation only
+    y[has_error & has_viol] = 3  # Both
     return y
 
 

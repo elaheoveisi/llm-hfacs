@@ -18,7 +18,11 @@ from models.svm_classify import svm_classify as run_svm_classify
 
 from utils import skip_run
 
-from data.dataset import build_balanced_dataset, build_processed_dataset, undersample_ae100
+from data.dataset import (
+    build_balanced_dataset,
+    build_processed_dataset,
+    undersample_ae100,
+)
 
 with open("configs/config.yaml", "r") as f:
     config = yaml.safe_load(f)

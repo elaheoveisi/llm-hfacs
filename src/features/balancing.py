@@ -36,5 +36,3 @@ def balance_and_report(
     for cls, count in y_train.value_counts().sort_index().items():
         print(f"  Class {cls}: {count} cases")
     return X_train, y_train
-
-

@@ -109,10 +109,16 @@ def build_balanced_dataset(config):
 
     viol_idx = y4[y4 == 2].index
     if len(viol_idx) <= TARGET_VIOLATION_N:
-        print(f"\nViolation already has {len(viol_idx)} rows (<= {TARGET_VIOLATION_N}), no drop needed.")
+        print(
+            f"\nViolation already has {len(viol_idx)} rows (<= {TARGET_VIOLATION_N}), no drop needed."
+        )
         return df
 
-    drop_idx = viol_idx.to_series().sample(n=len(viol_idx) - TARGET_VIOLATION_N, random_state=random_state).index
+    drop_idx = (
+        viol_idx.to_series()
+        .sample(n=len(viol_idx) - TARGET_VIOLATION_N, random_state=random_state)
+        .index
+    )
     df_out = df.drop(index=drop_idx).reset_index(drop=True)
 
     y_out = make_four_class_target_from_config(df_out, config)

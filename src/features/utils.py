@@ -87,7 +87,9 @@ def get_hfacs_feature_cols(config: dict) -> List[str]:
     ]
 
 
-def resolve_feature_cols(config: dict, df: pd.DataFrame, context: str = "") -> List[str]:
+def resolve_feature_cols(
+    config: dict, df: pd.DataFrame, context: str = ""
+) -> List[str]:
     """Return only the config-defined feature columns that exist in df.
 
     Prints a warning listing any columns that were defined in the config but
@@ -97,7 +99,9 @@ def resolve_feature_cols(config: dict, df: pd.DataFrame, context: str = "") -> L
     missing = [c for c in defined if c not in df.columns]
     if missing:
         tag = f" [{context}]" if context else ""
-        print(f"\n⚠ WARNING{tag}: {len(missing)} config feature(s) not found in dataset and will be skipped:")
+        print(
+            f"\n⚠ WARNING{tag}: {len(missing)} config feature(s) not found in dataset and will be skipped:"
+        )
         for c in missing:
             print(f"    - {c}")
     return [c for c in defined if c in df.columns]

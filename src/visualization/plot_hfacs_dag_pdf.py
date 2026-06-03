@@ -5,8 +5,8 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-import pandas as pd
-from features.hfacs_dag import build_dag_from_edges, plot_hfacs_layered
+import pandas as pd  # noqa: E402
+from features.hfacs_dag import build_dag_from_edges, plot_hfacs_layered  # noqa: E402
 
 EDGE_CSV = Path("data/processed/hfacs_dag_edges.csv")
 OUT_PDF = Path("data/processed/hfacs_dag_plot.pdf")

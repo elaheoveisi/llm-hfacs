@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import RandomizedSearchCV, StratifiedKFold
 

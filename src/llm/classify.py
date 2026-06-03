@@ -65,7 +65,10 @@ def _render_prompt(template: str, narrative: str) -> str:
 
 
 def evaluate_llm_predictions(
-    llm_out: Path, gt_path: Path, classes: list[str], config: dict,
+    llm_out: Path,
+    gt_path: Path,
+    classes: list[str],
+    config: dict,
 ) -> pd.DataFrame:
     llm_df = pd.read_csv(llm_out, keep_default_na=False, na_values=[""])
     gt_df = _reader(gt_path)(gt_path)
@@ -77,7 +80,9 @@ def evaluate_llm_predictions(
             "No rows matched between LLM output and ground truth — check original_index alignment."
         )
     label_names = {0: classes[3], 1: classes[0], 2: classes[1], 3: classes[2]}
-    merged["y_true"] = make_four_class_target_from_config(merged, config).map(label_names)
+    merged["y_true"] = make_four_class_target_from_config(merged, config).map(
+        label_names
+    )
 
     class_col = next(
         (c for c in ("Final_Class", "Final_HFACS_Code") if c in merged.columns), None
@@ -127,10 +132,21 @@ def evaluate_llm_predictions(
 # Sync mode
 # ---------------------------------------------------------------------------
 
+
 def _run_sync(
-    client, df: pd.DataFrame, tasks: list, llm_cfg: dict, prm: dict,
-    narr: str, final_cols: set, compact: bool, prompt_name: str, out: Path,
-    inp_path: Path, classes: list[str], config: dict | None = None,
+    client,
+    df: pd.DataFrame,
+    tasks: list,
+    llm_cfg: dict,
+    prm: dict,
+    narr: str,
+    final_cols: set,
+    compact: bool,
+    prompt_name: str,
+    out: Path,
+    inp_path: Path,
+    classes: list[str],
+    config: dict | None = None,
 ) -> None:
     sys_p = prm.get("system_prompt", prm.get("system", ""))
     step2_t = prm.get("step2_prompt")
@@ -189,9 +205,16 @@ def _run_sync(
 # Batch submit
 # ---------------------------------------------------------------------------
 
+
 def _run_batch_submit(
-    client, tasks: list, llm_cfg: dict, prm: dict,
-    narr: str, compact: bool, prompt_name: str, out: Path,
+    client,
+    tasks: list,
+    llm_cfg: dict,
+    prm: dict,
+    narr: str,
+    compact: bool,
+    prompt_name: str,
+    out: Path,
 ) -> None:
     if prm.get("step2_prompt"):
         raise NotImplementedError(
@@ -224,8 +247,14 @@ def _run_batch_submit(
         if model in json_models:
             body["response_format"] = {"type": "json_object"}
         lines.append(
-            json.dumps({"custom_id": f"row-{i}", "method": "POST",
-                        "url": "/v1/chat/completions", "body": body})
+            json.dumps(
+                {
+                    "custom_id": f"row-{i}",
+                    "method": "POST",
+                    "url": "/v1/chat/completions",
+                    "body": body,
+                }
+            )
         )
 
     jsonl_path = out.parent / f"{out.stem}_batch_input.jsonl"
@@ -247,17 +276,27 @@ def _run_batch_submit(
     print(f"\n[batch] Submitted. Batch ID: {batch.id}")
     print(f"[batch] Status: {batch.status}")
     print(f"[batch] Batch ID saved to: {batch_id_path}")
-    print(f"[batch] Set llm.batch_id: {batch.id} in config.yaml, then run with mode: batch_retrieve")
+    print(
+        f"[batch] Set llm.batch_id: {batch.id} in config.yaml, then run with mode: batch_retrieve"
+    )
 
 
 # ---------------------------------------------------------------------------
 # Batch retrieve
 # ---------------------------------------------------------------------------
 
+
 def _run_batch_retrieve(
-    client, df: pd.DataFrame, llm_cfg: dict, narr: str,
-    final_cols: set, compact: bool, out: Path,
-    inp_path: Path, classes: list[str], config: dict | None = None,
+    client,
+    df: pd.DataFrame,
+    llm_cfg: dict,
+    narr: str,
+    final_cols: set,
+    compact: bool,
+    out: Path,
+    inp_path: Path,
+    classes: list[str],
+    config: dict | None = None,
 ) -> None:
     batch_id = llm_cfg.get("batch_id") or None
     if not batch_id:
@@ -310,6 +349,7 @@ def _run_batch_retrieve(
 # Shared helpers
 # ---------------------------------------------------------------------------
 
+
 def _save_output(results: dict, out: Path) -> None:
     rows = [v for _, v in sorted(results.items())]
     out.parent.mkdir(parents=True, exist_ok=True)
@@ -320,6 +360,7 @@ def _save_output(results: dict, out: Path) -> None:
 # ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
+
 
 def run_llm_classification(config: dict) -> None:
     llm_cfg = config["llm"]
@@ -347,8 +388,16 @@ def run_llm_classification(config: dict) -> None:
         narr = llm_cfg["narrative_column"]
         df = _reader(inp_path)(inp_path)
         _run_batch_retrieve(
-            client, df, llm_cfg, narr,
-            set(llm_cfg["output_columns"]), compact, out, inp_path, classes, config,
+            client,
+            df,
+            llm_cfg,
+            narr,
+            set(llm_cfg["output_columns"]),
+            compact,
+            out,
+            inp_path,
+            classes,
+            config,
         )
         return
 
@@ -370,6 +419,17 @@ def run_llm_classification(config: dict) -> None:
         _run_batch_submit(client, tasks, llm_cfg, prm, narr, compact, prompt_name, out)
     else:
         _run_sync(
-            client, df, tasks, llm_cfg, prm, narr,
-            final_cols, compact, prompt_name, out, inp_path, classes, config,
+            client,
+            df,
+            tasks,
+            llm_cfg,
+            prm,
+            narr,
+            final_cols,
+            compact,
+            prompt_name,
+            out,
+            inp_path,
+            classes,
+            config,
         )

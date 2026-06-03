@@ -60,10 +60,12 @@ def svm_classify(config):
         },
     ]
 
-    pipeline = Pipeline([
-        ("scaler", StandardScaler()),
-        ("svc", SVC(random_state=random_state, probability=False)),
-    ])
+    pipeline = Pipeline(
+        [
+            ("scaler", StandardScaler()),
+            ("svc", SVC(random_state=random_state, probability=False)),
+        ]
+    )
 
     n_splits = min(cfg["cv_splits"], int(y_train.value_counts().min()))
     cv = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=random_state)
