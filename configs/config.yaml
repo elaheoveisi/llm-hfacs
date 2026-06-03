@@ -1,11 +1,11 @@
 ﻿llm:
-  api_key:   # set OPENAI_API_KEY env var instead
-  input: balanced_processed_output_undersampled.csv
+  api_key: ""
+  input: balanced_200_50_per_class.csv
   prompt: classify_direct # yaml file name (without .yaml) in src/llm/prompts/ASRS/
   default_prompt: classify_direct
-  model: gpt-4o-2024-11-20
+  model: gpt-4o-mini
   mode: sync # sync, batch_submit, batch_retrieve, evaluate
-  limit: null # null for all rows
+  limit: 2 # null for all rows
   compact: false
   evaluate: true # print accuracy + confusion matrix after classification
   retry_wait: 5 # seconds added to provider-suggested waits
@@ -31,10 +31,9 @@
     - Codes_Selected
     - Final_Justification
     - Confidence
-  ground_truth_columns: [category]
 
 paths:
-  ghfacs_data_dir: 'data/intermediate'
+  ghfacs_data_dir: 'data/processed'
   llm_output_dir: 'data/intermediate'
   prompts_dir: 'src/llm/prompts/ASRS'
   processed_data: 'data/processed/'
@@ -53,6 +52,7 @@ paths:
   ghfacs_svm_output_dir: 'data/processed/ghfacs_svm'
   dag_output_dir: 'data/processed'
   eda_output_dir: 'data/intermediate'
+  preconditions_csv: 'data/intermediate/balanced_200_50_per_class_preconditions.csv'
 
 source_columns:
   Anomaly: 'Events_Anomaly'
@@ -117,72 +117,6 @@ hfacs_categories:
     - Contributing_Airport
     - Contributing_Airspace Structure
 
-  # Cognitive_and_Attention_Factors:
-  # - HumanFactors_Complacency / Expectation Bias
-  #   - HumanFactors_Attention Failure
-  #   - HumanFactors_Workload / Cognitive Saturation
-  #   - HumanFactors_Memory Lapse
-  #   - HumanFactors_Mental Overload
-  #   - HumanFactors_Emotional State
-
-  # Decision_and_Planning_Factors:
-  #   - HumanFactors_Decision Making / Judgment
-  #   - HumanFactors_Risk Assessment
-  #   - HumanFactors_Prioritization Failure
-  #   - HumanFactors_Inadequate Planning
-  #   - HumanFactors_Rushed Operation
-  #   - HumanFactors_Improper Task Allocation
-  #   - HumanFactors_Mission Complexity Mismanagement
-
-  # Coordination_and_Communication_Factors:
-  #   - HumanFactors_Coordination Failure
-  #   - HumanFactors_Maintenance Coordination
-  #   - HumanFactors_Task Management
-  #   - HumanFactors_Verification Failure
-  #   - HumanFactors_Monitoring Failure
-  #   - HumanFactors_Information Transfer Failure
-
-  # Automation_and_Interface_Factors:
-  #   - HumanFactors_Automation Reliance
-  #   - HumanFactors_Automation Misinterpretation
-  #   - Contributing_Interface Design
-  #   - Contributing_Alerting System Design
-  #   - Contributing_System Integration Issue
-
-  # Environmental_and_Operational_Context:
-  #   - Contributing_Visual Limitation
-  #   - Contributing_Lighting Condition
-  #   - Contributing_Noise / Environmental Stressor
-  #   - Contributing_Terrain / Obstacle Environment
-  #   - Contributing_Workspace Layout
-  #   - Contributing_Operational Complexity
-
-  # Supervision_and_Organizational_Deficiencies:
-  #   - Contributing_Inadequate Oversight
-  #   - Contributing_Poor Supervision
-  #   - Contributing_Insufficient Operational Support
-  #   - Contributing_Inadequate Resource Allocation
-  #   - Contributing_Unsafe Organizational Practice
-  #   - Contributing_Policy Noncompliance
-  #   - Contributing_Procedural Deviation Acceptance
-  #   - Contributing_Normalization of Deviance
-
-  # Maintenance_and_Safety_Control_Failures:
-  #   - Contributing_Unresolved Maintenance Issue
-  #   - Contributing_Repeated Known Problem
-  #   - Contributing_Failure to Correct Hazard
-  #   - Contributing_Unaddressed Safety Risk
-
-  # Information_and_Workflow_Processes:
-  #   - Contributing_Data Entry Error
-  #   - Contributing_Documentation Issue
-  #   - Contributing_Information Availability
-  #   - Contributing_Resource Limitation
-  #   - Contributing_Workflow Design
-
-  # Procedure_and_Compliance_Factors:
-  #   - HumanFactors_Checklist Compliance
-  #   - HumanFactors_Operational Pressure
 
   Error:
     - 'Anomaly_Conflict Airborne Conflict'
@@ -238,27 +172,7 @@ models:
     gamma: scale
     test_size: 0.15
 
-  ghfacs_svm:
-    C: 1
-    kernel: rbf
-    gamma: scale
 
-  ghfacs_svm_nonbalance:
-    C: 2.3
-    kernel: linear
-    gamma: scale
-
-  ghfacs_rf:
-    n_estimators: [100, 200, 500]
-    max_depth: [null, 5, 10, 20]
-    min_samples_split: [2, 5, 10]
-    max_features: [sqrt, log2]
-    cv_splits: 5
-
-  ghfacs_bayes:
-    n_samples: 1000
-    tune: 500
-    cores: 1
 
   rf:
     test_size: 0.2

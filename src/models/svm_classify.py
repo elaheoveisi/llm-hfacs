@@ -14,7 +14,7 @@ from features.utils import (
     save_predictions,
     stratified_split,
 )
-from models.random_forest_classify import make_four_class_target_from_config
+from models.random_forest import make_four_class_target_from_config
 
 
 def svm_classify(config):

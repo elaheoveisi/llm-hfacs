@@ -13,8 +13,8 @@ import yaml
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
 from tqdm import tqdm
 
-from llm.utils import _reader, finals, flatten, four_class, resolve_openai_api_key
-from models.random_forest_classify import make_four_class_target_from_config
+from llm.utils import _reader, finals, flatten, resolve_openai_api_key
+from models.random_forest import make_four_class_target_from_config
 
 
 def _retry_delay(error: Exception, attempt: int, llm_cfg: dict) -> float:
@@ -60,66 +60,24 @@ def call_llm(client, msgs: list, llm_cfg: dict, prm: dict) -> str:
             time.sleep(_retry_delay(e, i, llm_cfg))
 
 
-def _clean_prompt_value(value) -> str:
-    if pd.isna(value):
-        return "Not provided"
-    text = str(value).strip()
-    if text.lower() in {"", "nan", "none", "null"}:
-        return "Not provided"
-    return text
-
-
-def _format_metadata_context(row: pd.Series, columns: list[str], config: dict | None = None) -> str:
-    lines = []
-    for col in columns:
-        value = row[col] if col in row.index else "Not available"
-        lines.append(f"{col}: {_clean_prompt_value(value)}")
-    return "\n".join(lines)
-
-
-def _render_prompt(template: str, narrative: str, metadata_context: str) -> str:
-    return (
-        template
-        .replace("{narrative}", narrative)
-        .replace("{report_context}", metadata_context)
-        .replace("{metadata_context}", metadata_context)
-    )
+def _render_prompt(template: str, narrative: str) -> str:
+    return template.replace("{narrative}", narrative)
 
 
 def evaluate_labels(
-    llm_out: Path, gt_path: Path, llm_cfg: dict, classes: list[str], config: dict | None = None
+    llm_out: Path, gt_path: Path, classes: list[str], config: dict,
 ) -> pd.DataFrame:
     llm_df = pd.read_csv(llm_out, keep_default_na=False, na_values=[""])
-    gt_cols = llm_cfg["ground_truth_columns"]
     gt_df = _reader(gt_path)(gt_path)
 
-    if len(gt_cols) == 1 and gt_cols[0] in gt_df.columns:
-        gt = gt_df[gt_cols].reset_index().rename(columns={"index": "original_index"})
-        merged = llm_df.merge(gt, on="original_index", how="inner")
-        if merged.empty:
-            raise ValueError(
-                "No rows matched between LLM output and ground truth — check original_index alignment."
-            )
-        merged["y_true"] = merged[gt_cols[0]].astype(str).str.strip()
-    elif config is not None:
-        gt = gt_df.reset_index().rename(columns={"index": "original_index"})
-        merged = llm_df.merge(gt, on="original_index", how="inner")
-        if merged.empty:
-            raise ValueError(
-                "No rows matched between LLM output and ground truth — check original_index alignment."
-            )
-        label_names = {0: classes[3], 1: classes[0], 2: classes[1], 3: classes[2]}
-        merged["y_true"] = make_four_class_target_from_config(merged, config).map(label_names)
-    else:
-        gt = gt_df[gt_cols].reset_index().rename(columns={"index": "original_index"})
-        merged = llm_df.merge(gt, on="original_index", how="inner")
-        if merged.empty:
-            raise ValueError(
-                "No rows matched between LLM output and ground truth — check original_index alignment."
-            )
-        merged["y_true"] = merged.apply(
-            lambda r: four_class(*[r[c] == c for c in gt_cols], classes), axis=1
+    gt = gt_df.reset_index().rename(columns={"index": "original_index"})
+    merged = llm_df.merge(gt, on="original_index", how="inner")
+    if merged.empty:
+        raise ValueError(
+            "No rows matched between LLM output and ground truth — check original_index alignment."
         )
+    label_names = {0: classes[3], 1: classes[0], 2: classes[1], 3: classes[2]}
+    merged["y_true"] = make_four_class_target_from_config(merged, config).map(label_names)
 
     class_col = next(
         (c for c in ("Final_Class", "Final_HFACS_Code") if c in merged.columns), None
@@ -185,13 +143,13 @@ def _run_sync(
             {"role": "user", "content": content}
         ]
 
-    def process(i: int, n: str, metadata_context: str) -> tuple:
+    def process(i: int, n: str) -> tuple:
         if not n or n.lower() in {"nan", "none", ""}:
             return i, {"original_index": i, "skip_reason": "empty_narrative"}
         try:
             step1_out = call_llm(
                 client,
-                build_msgs(_render_prompt(usr_t, n, metadata_context)),
+                build_msgs(_render_prompt(usr_t, n)),
                 llm_cfg,
                 prm,
             )
@@ -224,7 +182,7 @@ def _run_sync(
 
     _save_output(results, out)
     if llm_cfg["evaluate"]:
-        evaluate_labels(out, inp_path, llm_cfg, classes, config)
+        evaluate_labels(out, inp_path, classes, config)
 
 
 # ---------------------------------------------------------------------------
@@ -254,12 +212,12 @@ def _run_batch_submit(
         ]
 
     lines = []
-    for i, n, metadata_context in tasks:
+    for i, n in tasks:
         if not n or n.lower() in {"nan", "none", ""}:
             continue
         body: dict = {
             "model": model,
-            "messages": build_msgs(_render_prompt(usr_t, n, metadata_context)),
+            "messages": build_msgs(_render_prompt(usr_t, n)),
         }
         if model not in no_temp_models:
             body["temperature"] = float(prm.get("temperature", 0.0))
@@ -345,7 +303,7 @@ def _run_batch_retrieve(
 
     _save_output(results, out)
     if llm_cfg["evaluate"]:
-        evaluate_labels(out, inp_path, llm_cfg, classes, config)
+        evaluate_labels(out, inp_path, classes, config)
 
 
 # ---------------------------------------------------------------------------
@@ -379,7 +337,7 @@ def run(config: dict) -> None:
     mode = llm_cfg["mode"]
 
     if mode == "evaluate":
-        evaluate_labels(out, inp_path, llm_cfg, classes, config)
+        evaluate_labels(out, inp_path, classes, config)
         return
 
     key = resolve_openai_api_key(llm_cfg)
@@ -403,19 +361,9 @@ def run(config: dict) -> None:
     if narr not in df.columns:
         raise ValueError(f"Missing narrative column '{narr}' in {inp_path}.")
 
-    metadata_cols = llm_cfg.get("metadata_columns", [])
-    ground_truth_cols = set(llm_cfg.get("ground_truth_columns", []))
-    metadata_cols = [
-        c for c in metadata_cols
-        if c != narr and c not in ground_truth_cols
-    ]
-
     _lim = llm_cfg["limit"]
     subset = df.head(int(_lim)) if _lim not in (None, "", "none", "null") else df
-    tasks = [
-        (i, str(r[narr]).strip(), _format_metadata_context(r, metadata_cols, config))
-        for i, r in subset.iterrows()
-    ]
+    tasks = [(i, str(r[narr]).strip()) for i, r in subset.iterrows()]
     final_cols = set(llm_cfg["output_columns"])
 
     if mode == "batch_submit":

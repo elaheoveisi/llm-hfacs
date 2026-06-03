@@ -10,18 +10,10 @@ from eda import (
 )
 from features.utils import load_dataset
 from llm.classify import run as run_classify
-from llm.extract_factors import run as run_extract_factors
-from models.ghfacs import (
-    ghfacs_rf,
-    ghfacs_rf_balancing,
-    ghfacs_rf_no_rs,
-    ghfacs_svm,
-    ghfacs_svm_balancing,
-    ghfacs_svm_no_rs,
-)
-from models.hfacs import random_forest as run_rf
+from llm.extract_preconditions import run as run_extract_preconditions
 from models.hfacs import svm as run_svm
-from models.random_forest_classify import random_forest_classify as run_rf_classify
+from models.random_forest import random_forest as run_rf
+from models.precond_rf import precond_rf as run_rf_preconditions
 from models.svm_classify import svm_classify as run_svm_classify
 
 from utils import skip_run
@@ -55,44 +47,17 @@ with skip_run("skip", "svm") as check, check():
     df = load_dataset(config["paths"]["processed_csv"])
     run_svm(config, df)
 
-with skip_run("skip", "rf") as check, check():
-    run_rf(config)
-
-#with skip_run("skip", "rf_new_features") as check, check():
-    #run_rf_new_features(config)
-
-with skip_run("skip", "ghfacs_svm") as check, check():
-    df = load_dataset(config["paths"]["undersampled_csv"])
-    ghfacs_svm(config, df)
-
-with skip_run("skip", "ghfacs_rf") as check, check():
-    df = load_dataset(config["paths"]["undersampled_csv"])
-    ghfacs_rf(config, df)
-
-with skip_run("skip", "ghfacs_rf_no_rs") as check, check():
-    df = load_dataset(config["paths"]["undersampled_csv"])
-    ghfacs_rf_no_rs(config, df)
-
-with skip_run("skip", "ghfacs_svm_balancing") as check, check():
-    df = load_dataset(config["paths"]["undersampled_csv"])
-    ghfacs_svm_balancing(config, df)
-
-with skip_run("skip", "ghfacs_rf_balancing") as check, check():
-    df = load_dataset(config["paths"]["undersampled_csv"])
-    ghfacs_rf_balancing(config, df)
-
-with skip_run("skip", "ghfacs_svm_no_rs") as check, check():
-    df = load_dataset(config["paths"]["undersampled_csv"])
-    ghfacs_svm_no_rs(config, df)
-
-with skip_run("skip", "extract_factors") as check, check():
-    run_extract_factors(config)
+with skip_run("skip", "extract_preconditions") as check, check():
+    run_extract_preconditions(config)
 
 with skip_run("run", "classify") as check, check():
     run_classify(config)
 
-with skip_run("skip", "rf_classify") as check, check():
-    run_rf_classify(config)
+with skip_run("skip", "rf") as check, check():
+    run_rf(config)
+
+with skip_run("skip", "rf_preconditions") as check, check():
+    run_rf_preconditions(config)
 
 with skip_run("skip", "svm_classify") as check, check():
     run_svm_classify(config)

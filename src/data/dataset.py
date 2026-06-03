@@ -5,7 +5,7 @@ import pandas as pd
 import polars as pl
 
 from features.utils import load_dataset, make_four_class_target
-from models.random_forest_classify import make_four_class_target_from_config
+from models.random_forest import make_four_class_target_from_config
 
 
 def load_raw_dataset(raw_dir):

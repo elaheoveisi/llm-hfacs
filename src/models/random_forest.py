@@ -2,20 +2,38 @@ from __future__ import annotations
 
 import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.inspection import permutation_importance
-from sklearn.model_selection import GridSearchCV, StratifiedKFold
+from sklearn.model_selection import RandomizedSearchCV, StratifiedKFold
 
 from features.balancing import balance_and_report
 from features.utils import (
     ensure_dir,
-    filter_tied_rows,
     get_hfacs_feature_cols,
     load_dataset,
-    make_three_class_target_from_config,
     print_eval_metrics,
     save_predictions,
     stratified_split,
 )
+
+
+def make_four_class_target_from_config(df: pd.DataFrame, config: dict) -> pd.Series:
+    error_cols = list(config["hfacs_categories"]["Error"])
+    viol_cols = list(config["hfacs_categories"]["Violation"])
+
+    def _active(cols):
+        present = [c for c in cols if c in df.columns]
+        if not present:
+            return pd.Series(False, index=df.index)
+        return (df[present].apply(pd.to_numeric, errors="coerce").fillna(0) > 0).any(axis=1)
+
+    has_error = _active(error_cols)
+    has_viol = _active(viol_cols)
+
+    y = pd.Series(0, index=df.index, dtype=int)
+    y[has_error & ~has_viol] = 1   # Error only
+    y[~has_error & has_viol] = 2   # Violation only
+    y[has_error & has_viol] = 3    # Both
+    return y
+
 
 def random_forest(config):
     out_dir = config["paths"]["rf_output_dir"]
@@ -23,41 +41,48 @@ def random_forest(config):
     cfg = config["models"]["rf"]
     random_state = config["models"]["random_state"]
 
-    df = load_dataset(config["paths"]["processed_csv"])
+    df = load_dataset(config["paths"]["rf_classify_input"])
 
     feature_cols = [c for c in get_hfacs_feature_cols(config) if c in df.columns]
-    y3 = make_three_class_target_from_config(df, config)
-    df, y3 = filter_tied_rows(df, y3)
+    y4 = make_four_class_target_from_config(df, config)
 
-    label_names = {0: "Neither", 1: "Error", 2: "Violation"}
-    print("\nClass distribution before balancing (all data):")
+    label_names = {0: "Neither", 1: "Error", 2: "Violation", 3: "Both"}
+    print("\nClass distribution (all data):")
     for cls, name in label_names.items():
-        print(f"  {name}: {(y3 == cls).sum()}")
+        print(f"  {name}: {(y4 == cls).sum()}")
 
     X = df.loc[:, feature_cols].astype(float)
+    X, y4 = balance_and_report(X, y4, "full")
     X_train, X_test, y_train, y_test = stratified_split(
-        X, y3, test_size=cfg["test_size"], random_state=random_state
+        X, y4, test_size=cfg["test_size"], random_state=random_state
     )
-    X_train, y_train = balance_and_report(X_train, y_train, "train")
-    X_test, y_test = balance_and_report(X_test, y_test, "test")
 
+    print("\nClass distribution in train split:")
+    for cls, count in y_train.value_counts().sort_index().items():
+        print(f"  Class {cls} ({label_names[cls]}): {count} cases")
+    print("\nClass distribution in test split:")
+    for cls, count in y_test.value_counts().sort_index().items():
+        print(f"  Class {cls} ({label_names[cls]}): {count} cases")
 
-    param_grid = {
+    param_dist = {
         "n_estimators": cfg["n_estimators"],
         "max_depth": cfg["max_depth"],
         "min_samples_split": cfg["min_samples_split"],
+        "min_samples_leaf": cfg["min_samples_leaf"],
         "max_features": cfg["max_features"],
     }
 
     n_splits = min(cfg["cv_splits"], int(y_train.value_counts().min()))
     cv = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=random_state)
-    grid = GridSearchCV(
+    grid = RandomizedSearchCV(
         RandomForestClassifier(random_state=random_state, n_jobs=-1),
-        param_grid,
+        param_dist,
+        n_iter=cfg["n_iter"],
         cv=cv,
         scoring="f1_macro",
         n_jobs=-1,
         verbose=1,
+        random_state=random_state,
     )
     grid.fit(X_train, y_train)
 
@@ -65,6 +90,6 @@ def random_forest(config):
     print(f"Best CV f1_macro: {grid.best_score_:.4f}")
 
     y_pred = grid.predict(X_test)
-    print("\nClassification report (0=Neither, 1=Error, 2=Violation):")
+    print("\nClassification report (0=Neither, 1=Error, 2=Violation, 3=Both):")
     print_eval_metrics(y_test, y_pred)
-    save_predictions(y_test, y_pred, out_dir, "rf_p_predictions.csv")
+    save_predictions(y_test, y_pred, out_dir, "rf_classify_predictions.csv")
