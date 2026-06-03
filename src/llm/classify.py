@@ -64,7 +64,7 @@ def _render_prompt(template: str, narrative: str) -> str:
     return template.replace("{narrative}", narrative)
 
 
-def evaluate_labels(
+def evaluate_llm_predictions(
     llm_out: Path, gt_path: Path, classes: list[str], config: dict,
 ) -> pd.DataFrame:
     llm_df = pd.read_csv(llm_out, keep_default_na=False, na_values=[""])
@@ -182,7 +182,7 @@ def _run_sync(
 
     _save_output(results, out)
     if llm_cfg["evaluate"]:
-        evaluate_labels(out, inp_path, classes, config)
+        evaluate_llm_predictions(out, inp_path, classes, config)
 
 
 # ---------------------------------------------------------------------------
@@ -303,7 +303,7 @@ def _run_batch_retrieve(
 
     _save_output(results, out)
     if llm_cfg["evaluate"]:
-        evaluate_labels(out, inp_path, classes, config)
+        evaluate_llm_predictions(out, inp_path, classes, config)
 
 
 # ---------------------------------------------------------------------------
@@ -321,7 +321,7 @@ def _save_output(results: dict, out: Path) -> None:
 # Entry point
 # ---------------------------------------------------------------------------
 
-def run(config: dict) -> None:
+def run_llm_classification(config: dict) -> None:
     llm_cfg = config["llm"]
     classes = llm_cfg["classes"]
     prompt_name = llm_cfg["prompt"]
@@ -337,7 +337,7 @@ def run(config: dict) -> None:
     mode = llm_cfg["mode"]
 
     if mode == "evaluate":
-        evaluate_labels(out, inp_path, classes, config)
+        evaluate_llm_predictions(out, inp_path, classes, config)
         return
 
     key = resolve_openai_api_key(llm_cfg)

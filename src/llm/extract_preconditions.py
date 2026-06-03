@@ -68,7 +68,7 @@ def _call_llm(client, msgs: list, llm_cfg: dict) -> str:
             time.sleep(_retry_delay(e, attempt, llm_cfg))
 
 
-def _evaluate(out_df: pd.DataFrame, subset: pd.DataFrame, config: dict) -> None:
+def _evaluate_precondition_extraction(out_df: pd.DataFrame, subset: pd.DataFrame, config: dict) -> None:
     from sklearn.metrics import classification_report
 
     items = _get_items(config)
@@ -110,7 +110,7 @@ def _evaluate(out_df: pd.DataFrame, subset: pd.DataFrame, config: dict) -> None:
         print(f"{'Overall':<40} {len(all_accs):>5}  {sum(all_accs)/len(all_accs):>8.4f}  {sum(all_f1s)/len(all_f1s):>8.4f}")
 
 
-def run(config: dict) -> None:
+def run_extract_preconditions(config: dict) -> None:
     """Extract individual HFACS precondition columns from narratives via LLM.
 
     Factor descriptions are read from ASRS_extract_preconditions.yaml and injected
@@ -191,7 +191,7 @@ def run(config: dict) -> None:
             lambda idx, c=item: results.get(idx, {}).get(c, 0)
         )
 
-    _evaluate(out_df, subset, config)
+    _evaluate_precondition_extraction(out_df, subset, config)
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_df.to_csv(out_path, index=False, encoding="utf-8-sig")

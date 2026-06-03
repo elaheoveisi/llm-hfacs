@@ -9,8 +9,8 @@ from eda import (
     save_tables,
 )
 from features.utils import load_dataset
-from llm.classify import run as run_classify
-from llm.extract_preconditions import run as run_extract_preconditions
+from llm.classify import run_llm_classification as run_classify
+from llm.extract_preconditions import run_extract_preconditions
 from models.hfacs import svm as run_svm
 from models.random_forest import random_forest as run_rf
 from models.precond_rf import precond_rf as run_rf_preconditions
