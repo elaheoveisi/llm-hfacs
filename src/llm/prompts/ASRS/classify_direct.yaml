@@ -1,57 +1,55 @@
-﻿temperature: 0
+temperature: 0
 system_prompt: |
-  You are an expert HFACS aviation safety analyst.
-  Classify the unsafe act. For this dataset, Violation means procedural, regulatory, policy, clearance, FAR, airspace, MEL/CDL, weight-and-balance, hazardous-material, passenger-misconduct, or published-material noncompliance. Do not require proof that the person knowingly or deliberately broke the rule.
+  You are an expert ASRS/HFACS aviation safety analyst.
+  Map the narrative to the dataset's Error and Violation event families. Use the dataset taxonomy below rather than requiring deliberate misconduct.
   Return only valid JSON. No commentary outside the JSON.
 user_prompt_template: |
-  You are given only the narrative.
-  Make two independent binary decisions before selecting the final class:
-    Q1_Error: Is there a concrete unintentional unsafe act matching an Error-type event: airborne/ground conflict caused by the person, NMAC, altitude/speed/track deviation, loss of aircraft control, VFR into IMC, CFIT/CFTT, fuel mismanagement/fuel exhaustion, or gear-up landing? Ignore Violation evidence while answering Q1. Answer Yes or No.
-    Q2_Violation: Is there procedural, regulatory, policy, clearance, FAR, airspace, MEL/CDL, weight-and-balance, hazardous-material, passenger-misconduct, or published-material noncompliance? This includes inadvertent or unaware noncompliance. Do not require proof of deliberate intent. Ignore Error evidence while answering Q2. Answer Yes or No.
-    Final_Class: Derive exactly from Q1_Error and Q2_Violation.
-  Classify the narrative into exactly one of: Error, Violation, Neither, Both.
-  Error — Concrete unintentional unsafe act: an operational control/decision/perception failure that directly produces an Error-type event such as conflict, altitude/speed/track deviation, loss of control, VFR into IMC, CFIT/CFTT, fuel issue, or gear-up landing.
-  Violation — Procedural/regulatory/policy noncompliance: a required rule, clearance, FAR, airspace restriction, SOP, manual, MEL/CDL, weight-and-balance, published material, or policy was not followed. Intent may be deliberate, inadvertent, mistaken, or unknown.
-  Neither — No pilot/crew unsafe act: external cause (ATC, equipment, weather) or reporter acted correctly throughout.
-  Both — The narrative contains BOTH an Error and a Violation/noncompliance signal, each independently present. You MUST return Both if Q1_Error = Yes AND Q2_Violation = Yes.
-  Gate before classifying:
-  - If the narrative describes any of the following events, treat it as evidence for Q1_Error=Yes: airborne conflict, ground conflict, NMAC, altitude excursion/overshoot/undershoot from assigned altitude, speed deviation, track/heading deviation, loss of aircraft control (inflight or ground), VFR into IMC, CFIT/CFTT, UAS fly-away, fuel issue (inflight or ground), or gear-up landing — unless the narrative clearly says the event was entirely external and the person acted correctly.
-  - If the narrative describes any of the following events, treat it as evidence for Q2_Violation=Yes: airspace violation, procedural clearance deviation, FAR deviation, hazardous material violation, landing without clearance, procedural maintenance deviation, MEL/CDL deviation, procedural deviation of other/unknown type, published material/policy noncompliance, unauthorized flight operations (UAS), weight and balance deviation, or passenger misconduct — even if the person was unaware or did not intend to violate.
-  - If the narrative describes both an Error-type event and a Violation-type event from the lists above, set Both unless the narrative clearly rules out one branch.
-  - Q1_Error is strict. Do NOT mark Error just because the narrative mentions confusion, workload, fatigue, time pressure, troubleshooting, communication breakdown, situational awareness, training, maintenance, wrong part, equipment damage, vehicle contact, or a bad outcome.
-  - Mark Q1_Error=Yes only when the narrative describes a concrete Error-type event listed above and the person's action caused or contributed to it.
-  - Do not use intentionality as the gate for Violation. Any supported procedural/regulatory/policy noncompliance leads to Violation.
-  - If the narrative says the person intended to comply but failed, that can be Error only if it produced a concrete Error-type event. If that failure also involved noncompliance with a procedure/regulation/policy, Q2_Violation is also Yes leading to Both.
-  - If both an Error and a Violation/noncompliance are independently present, classify as Both. Never collapse to just one.
-  - Equipment failure the crew could not foresee or prevent leads to Neither, even if crew actions appear suboptimal in hindsight.
-  Derivation: decide Error and Violation independently, then derive Final_Class:
-  Q1_Error=Yes + Q2_Violation=No leads to Error | Q1_Error=No + Q2_Violation=Yes leads to Violation | both No leads to Neither | both Yes leads to Both
-  Common traps:
-  - Bad outcome alone is not Error; the narrative must explicitly describe what was done wrong.
-  - Following a wrong ATC clearance in good faith leads to Neither unless the narrative also describes crew/personnel error or noncompliance.
-  - Descending below minimums, entering controlled airspace without clearance, runway incursion, landing without clearance, FAR deviation, or clearance deviation leads to Violation even if the person says they did not realize it.
-  - Published material, manual, SOP, company policy, procedure, MEL/CDL, or weight-and-balance not followed leads to Violation even when caused by confusion, oversight, time pressure, workload, fatigue, or communication breakdown.
-  - A routine shortcut the person knew was non-compliant leads to Violation.
-  - If a noncompliance event also includes confusion, misread information, poor situational awareness, forgotten step, incorrect installation, wrong part, or failed communication, do NOT automatically mark Both. Mark Both only if the narrative also describes a concrete Error-type event: conflict, NMAC, altitude/speed/track deviation, loss of control, VFR into IMC, CFIT/CFTT, fuel issue, or gear-up landing.
-  - Mechanical/equipment failure with no crew procedural failure leads to Neither, not Error.
-  - Crew responds correctly to an equipment failure (follows QRH, declares emergency) leads to Neither.
-  - If the narrative is too short or vague to identify a specific crew unsafe act leads to Neither.
-  - Both branches must be evaluated independently — if Q1_Error = Yes AND Q2_Violation = Yes then Both, always.
-  Ex1 Error (key: unintentional perceptual error directly produced a concrete landing-short event; no procedural or regulatory noncompliance present) — "On final approach at night I experienced a visual illusion and believed I was higher than I was. Visibility was reduced by fog. I crossed the threshold too low and landed short of the runway."
-  {"Q1_Error":{"Final_Answer":"Yes","Short_Explanation":"Unintentional perceptual error on approach — misperceived altitude, crossed threshold too low."},"Q2_Violation":{"Final_Answer":"No","Short_Explanation":"No procedural, regulatory, policy, or clearance noncompliance described."},"Final_Class":"Error","Codes_Selected":["Error"],"Final_Justification":"Perceptual error in degraded visibility; no noncompliance signal present.","Confidence":"High"}
-  Ex2 Violation (trap: uneventful outcome might suggest Neither; key: weight-and-balance is an explicitly named Violation type — the required verification step was skipped regardless of outcome, and no Error-type event occurred to trigger Q1_Error) — "We were under time pressure to turn the aircraft around quickly. I signed off the weight and balance sheet without verifying the actual passenger and baggage counts from the gate agent, which is required by our company SOP before every departure. The flight was completely uneventful and we arrived on schedule. At the destination I realized the actual figures had never been confirmed."
-  {"Q1_Error":{"Final_Answer":"No","Short_Explanation":"The flight was completely uneventful. No concrete Error-type event occurred — no altitude deviation, conflict, fuel issue, or other operational failure."},"Q2_Violation":{"Final_Answer":"Yes","Short_Explanation":"Required weight and balance verification was not completed; weight-and-balance is an explicitly named Violation type and noncompliance is present regardless of outcome."},"Final_Class":"Violation","Codes_Selected":["Violation"],"Final_Justification":"Procedural noncompliance is present; no Error-type event occurred. The uneventful outcome does not remove the Violation — the required SOP step was simply not done.","Confidence":"High"}
-  Ex3 Neither (trap: GPWS activation looks like a crew Error; key: crew followed clearance and responded correctly throughout — the event was entirely ATC-caused, so Q1_Error and Q2_Violation are both No) — "ATC issued a clearance to descend to 3,000 feet which conflicted with terrain. We followed the clearance. GPWS activated and we climbed immediately. ATC acknowledged their error."
-  {"Q1_Error":{"Final_Answer":"No","Short_Explanation":"Crew followed the clearance and responded correctly throughout; no unintentional act by the flight crew."},"Q2_Violation":{"Final_Answer":"No","Short_Explanation":"Following an ATC clearance in good faith is not noncompliance by the crew."},"Final_Class":"Neither","Codes_Selected":[],"Final_Justification":"Incident caused by ATC error; flight crew acted correctly throughout.","Confidence":"High"}
-  Ex4 Violation (trap: no deliberate intent looks like Neither; key: duty-to-know applies — unawareness of airspace boundaries does not remove the noncompliance label) — "I thought we were still in Class E. We never contacted approach control and later discovered we had been inside Class B for several miles. No conflict occurred."
-  {"Q1_Error":{"Final_Answer":"No","Short_Explanation":"Entering airspace without clearance is regulatory noncompliance; no separate unintentional control or perception error is described."},"Q2_Violation":{"Final_Answer":"Yes","Short_Explanation":"Entered controlled airspace without required contact/clearance; unawareness does not remove the noncompliance label."},"Final_Class":"Violation","Codes_Selected":["Violation"],"Final_Justification":"Airspace noncompliance is present even though intent is not proven; duty to know the boundary applies.","Confidence":"High"}
-  Ex5 Both (key: two independent acts — the intentional checklist skip is the Violation; the unintentional fuel-gauge misread is a separate Error-type event; one does not subsume the other) — "Rushing to meet a schedule I skipped the required pre-flight fuel check. I also misread the fuel gauges and estimated more fuel than available, leading to fuel exhaustion en route."
-  {"Q1_Error":{"Final_Answer":"Yes","Short_Explanation":"Misread fuel gauges — unintentional perceptual error that produced fuel exhaustion en route (fuel issue)."},"Q2_Violation":{"Final_Answer":"Yes","Short_Explanation":"Required pre-flight fuel check was skipped — procedural noncompliance regardless of deliberate intent."},"Final_Class":"Both","Codes_Selected":["Error","Violation"],"Final_Justification":"Both present: unintentional fuel-gauge misread (Error) and procedural noncompliance from skipping the required fuel check (Violation).","Confidence":"High"}
-  Ex6 Both (key: altimeter misread independently produced a concrete CFIT-type event; SOP briefing skip is an independent Violation — neither subsumes the other, so Both is required) — "On final approach I misread the altimeter setting and descended 400 ft below the MDA. GPWS activated and we executed a missed approach. I had also skipped the approach briefing, required by our SOP."
-  {"Q1_Error":{"Final_Answer":"Yes","Short_Explanation":"Descent below MDA — CFIT-type event caused by unintentional altimeter misread."},"Q2_Violation":{"Final_Answer":"Yes","Short_Explanation":"Required approach briefing (SOP) was skipped — procedural noncompliance."},"Final_Class":"Both","Codes_Selected":["Error","Violation"],"Final_Justification":"Both present: unintentional descent below MDA (Error) and SOP approach briefing noncompliance (Violation).","Confidence":"High"}
-  Ex7 Both (trap: the altitude deviation draws full attention and the clearance readback omission is overlooked, leading to an Error-only label; key: the missing readback is an independent regulatory Violation — both branches are present and must be captured) — "Climbing through 8,000 feet I became distracted by a passenger call and inadvertently leveled off at 8,500 feet instead of my cleared altitude of 9,000 feet, creating a 500-foot altitude deviation. ATC called the deviation and I corrected immediately. I also realized afterward that I had never read back the altitude clearance to ATC as required."
-  {"Q1_Error":{"Final_Answer":"Yes","Short_Explanation":"Unintentional altitude deviation — leveled off 500 ft below cleared altitude due to distraction. Concrete Error-type event (altitude excursion)."},"Q2_Violation":{"Final_Answer":"Yes","Short_Explanation":"Required ATC altitude clearance readback was never completed — regulatory/procedural noncompliance independent of the altitude deviation."},"Final_Class":"Both","Codes_Selected":["Error","Violation"],"Final_Justification":"Both branches are independently present: the altitude deviation is a concrete unintentional Error-type event, and the omitted clearance readback is a separate regulatory Violation. Classifying as Error only would miss the independent noncompliance.","Confidence":"High"}
-  Return only valid JSON:
+  Decide Q1 and Q2 independently from the narrative, then derive Final_Class.
+
+  Q1_Error = Yes when the narrative supports at least one Error event:
+  - conflict: airborne conflict, ground conflict, or NMAC;
+  - deviation: assigned-altitude excursion/overshoot/undershoot, speed deviation, or track/heading deviation;
+  - encounter: inflight or ground loss of aircraft control, VFR in IMC, CFTT/CFIT, UAS fly-away, inflight or ground fuel issue, or gear-up landing.
+
+  Q2_Violation = Yes when the narrative supports at least one Violation event:
+  - airspace violation;
+  - procedural deviation/discrepancy involving a clearance, FAR, hazardous material, landing without clearance, maintenance, MEL/CDL, other/unknown procedure, published material/policy, unauthorized UAS operation, or weight and balance;
+  - passenger misconduct.
+
+  Evidence rules:
+  - Match events, not intent. A Violation may be deliberate, inadvertent, mistaken, or discovered later.
+  - Procedural noncompliance may be explicit or clearly implied, but it still needs support in the narrative. Examples include an omitted checklist or inspection, incorrect maintenance, a missing or wrong part, a tool left in the aircraft, operation contrary to MEL/CDL, inaccurate weight-and-balance data, or entering controlled airspace without the required clearance/contact.
+  - Do not infer Violation from the mere fact that damage, malfunction, or maintenance activity occurred. A post-event inspection, later repair, or discussion of FARs/policy is not enough by itself.
+  - Error requires a listed event, not merely confusion, distraction, workload, equipment damage, a hard landing, a prop strike, a forced or precautionary landing, an equipment failure, or another bad outcome.
+  - Do not infer loss of control from every runway excursion, hard landing, collapsed gear, or contact with terrain/object. Mark Error only when the narrative actually describes a listed conflict, deviation, loss of control, fuel event, VFR-in-IMC, CFIT/CFTT, fly-away, or gear-up landing.
+  - Do not require Error and Violation to come from separate acts. One occurrence may support both lists, but only if each branch has its own evidence. Example: forgetting to lower the gear supports gear-up landing and an omitted required landing procedure.
+  - Gear-up landing alone does not automatically mean Violation; Q2_Violation becomes Yes only if the narrative also supports a missed required procedure or other noncompliance.
+  - If the crew followed checklists, complied with ATC, inspected normally, or responded correctly to a malfunction, default Q2_Violation to No unless the narrative states contrary evidence.
+  - External weather, ATC, equipment, wildlife, or ground-service events are Neither only when no listed Error event and no supported noncompliance are described.
+  - Do not invent a rule violation solely because an accident occurred.
+
+  Derive Final_Class exactly:
+  Yes/No = Error; No/Yes = Violation; No/No = Neither; Yes/Yes = Both.
+  Codes_Selected must agree with Final_Class: ["Error"], ["Violation"], [], or ["Error","Violation"].
+
+  Examples:
+  Narrative: "On rollout the pilot's foot slipped from the rudder/brake. The aircraft veered off the pavement and the nose gear collapsed."
+  {"Q1_Error":{"Final_Answer":"Yes","Short_Explanation":"The aircraft departed the pavement after directional control was lost."},"Q2_Violation":{"Final_Answer":"No","Short_Explanation":"No procedural or regulatory noncompliance is stated or clearly implied."},"Final_Class":"Error","Codes_Selected":["Error"],"Final_Justification":"Ground loss of aircraft control only.","Confidence":"High"}
+
+  Narrative: "During inspection, a required tie bolt was found missing from the main-wheel assembly."
+  {"Q1_Error":{"Final_Answer":"No","Short_Explanation":"No listed conflict, deviation, loss-of-control, fuel, CFIT, or gear-up event is described."},"Q2_Violation":{"Final_Answer":"Yes","Short_Explanation":"A required aircraft part was missing, supporting maintenance and published-procedure noncompliance."},"Final_Class":"Violation","Codes_Selected":["Violation"],"Final_Justification":"Maintenance noncompliance only.","Confidence":"High"}
+
+  Narrative: "In a busy pattern I became distracted, forgot to lower the landing gear, and landed gear-up."
+  {"Q1_Error":{"Final_Answer":"Yes","Short_Explanation":"A gear-up landing is a listed Error event."},"Q2_Violation":{"Final_Answer":"Yes","Short_Explanation":"The required landing-gear procedure was omitted."},"Final_Class":"Both","Codes_Selected":["Error","Violation"],"Final_Justification":"The same occurrence supports both dataset event families.","Confidence":"High"}
+
+  Narrative: "After takeoff an engine-driven pump failed. The crew completed the checklist, declared an emergency, and landed normally."
+  {"Q1_Error":{"Final_Answer":"No","Short_Explanation":"An equipment failure occurred without a listed Error event."},"Q2_Violation":{"Final_Answer":"No","Short_Explanation":"The crew followed the required procedure; no noncompliance is described."},"Final_Class":"Neither","Codes_Selected":[],"Final_Justification":"External equipment failure with a correct crew response.","Confidence":"High"}
+
+  Narrative: "The engine failed after takeoff. I landed straight ahead off the runway and the prop struck the ground."
+  {"Q1_Error":{"Final_Answer":"No","Short_Explanation":"An off-airport landing and prop strike after engine failure are not enough by themselves to show a listed Error event."},"Q2_Violation":{"Final_Answer":"No","Short_Explanation":"No procedural or regulatory noncompliance is stated or clearly implied."},"Final_Class":"Neither","Codes_Selected":[],"Final_Justification":"Failure outcome only; no supported Error or Violation event.","Confidence":"High"}
+
+  Return only:
   {"Q1_Error":{"Final_Answer":"Yes/No","Short_Explanation":""},"Q2_Violation":{"Final_Answer":"Yes/No","Short_Explanation":""},"Final_Class":"Error/Violation/Neither/Both","Codes_Selected":[],"Final_Justification":"","Confidence":"Low/Medium/High"}
+
   Narrative:
   {narrative}

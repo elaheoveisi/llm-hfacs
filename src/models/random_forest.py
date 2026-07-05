@@ -4,14 +4,12 @@ import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import RandomizedSearchCV, StratifiedKFold
 
-from features.balancing import balance_and_report
 from features.utils import (
     ensure_dir,
     get_hfacs_feature_cols,
     load_dataset,
     print_eval_metrics,
     save_predictions,
-    stratified_split,
 )
 
 
@@ -54,17 +52,20 @@ def random_forest(config):
         print(f"  {name}: {(y4 == cls).sum()}")
 
     X = df.loc[:, feature_cols].astype(float)
-    X, y4 = balance_and_report(X, y4, "full")
-    X_train, X_test, y_train, y_test = stratified_split(
-        X, y4, test_size=cfg["test_size"], random_state=random_state
-    )
 
-    print("\nClass distribution in train split:")
-    for cls, count in y_train.value_counts().sort_index().items():
-        print(f"  Class {cls} ({label_names[cls]}): {count} cases")
-    print("\nClass distribution in test split:")
-    for cls, count in y_test.value_counts().sort_index().items():
-        print(f"  Class {cls} ({label_names[cls]}): {count} cases")
+    train_dfs, test_dfs = [], []
+    for cls in y4.unique():
+        idx = y4[y4 == cls].index
+        sample = X.loc[idx].sample(n=125 + 50, random_state=random_state)
+        train_dfs.append(sample.iloc[:125])
+        test_dfs.append(sample.iloc[125:])
+    X_train = pd.concat(train_dfs)
+    X_test = pd.concat(test_dfs)
+    y_train = y4.loc[X_train.index]
+    y_test = y4.loc[X_test.index]
+
+    print(f"\nTrain: {len(X_train)} samples (125 per class)")
+    print(f"Test:  {len(X_test)} samples (50 per class)")
 
     param_dist = {
         "n_estimators": cfg["n_estimators"],

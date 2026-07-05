@@ -69,17 +69,22 @@ def evaluate_llm_predictions(
     gt_path: Path,
     classes: list[str],
     config: dict,
+    eval_indices: set | None = None,
 ) -> pd.DataFrame:
     llm_df = pd.read_csv(llm_out, keep_default_na=False, na_values=[""])
     gt_df = _reader(gt_path)(gt_path)
 
     gt = gt_df.reset_index().rename(columns={"index": "original_index"})
     merged = llm_df.merge(gt, on="original_index", how="inner")
+    if eval_indices is not None:
+        merged = merged[merged["original_index"].isin(eval_indices)].reset_index(
+            drop=True
+        )
     if merged.empty:
         raise ValueError(
             "No rows matched between LLM output and ground truth — check original_index alignment."
         )
-    label_names = {0: classes[3], 1: classes[0], 2: classes[1], 3: classes[2]}
+    label_names = {0: "Neither", 1: "Error", 2: "Violation", 3: "Both"}
     merged["y_true"] = make_four_class_target_from_config(merged, config).map(
         label_names
     )
@@ -147,6 +152,7 @@ def _run_sync(
     inp_path: Path,
     classes: list[str],
     config: dict | None = None,
+    eval_indices: set | None = None,
 ) -> None:
     sys_p = prm.get("system_prompt", prm.get("system", ""))
     step2_t = prm.get("step2_prompt")
@@ -198,7 +204,44 @@ def _run_sync(
 
     _save_output(results, out)
     if llm_cfg["evaluate"]:
-        evaluate_llm_predictions(out, inp_path, classes, config)
+        evaluate_llm_predictions(out, inp_path, classes, config, eval_indices)
+
+
+# ---------------------------------------------------------------------------
+# Batch helpers
+# ---------------------------------------------------------------------------
+
+
+def _submit_chunk(client, jsonl_path: Path) -> str:
+    with open(jsonl_path, "rb") as f:
+        uploaded = client.files.create(file=f, purpose="batch")
+    batch = client.batches.create(
+        input_file_id=uploaded.id,
+        endpoint="/v1/chat/completions",
+        completion_window="24h",
+    )
+    return batch.id
+
+
+def _parse_batch_results(
+    raw_bytes: bytes, df: pd.DataFrame, narr: str, final_cols: set, compact: bool
+) -> dict[int, dict]:
+    results: dict[int, dict] = {}
+    for line in raw_bytes.decode("utf-8").splitlines():
+        item = json.loads(line)
+        i = int(item["custom_id"].removeprefix("row-"))
+        if item.get("error"):
+            results[i] = {"original_index": i, "error": str(item["error"])}
+            continue
+        content = item["response"]["body"]["choices"][0]["message"]["content"]
+        n = str(df.loc[i, narr]).strip() if i in df.index else ""
+        try:
+            x = flatten(json.loads(content))
+        except Exception as e:
+            x = {"error": str(e)}
+        x |= {"original_index": i, narr: n}
+        results[i] = finals(x, narr, final_cols) if compact else x
+    return results
 
 
 # ---------------------------------------------------------------------------
@@ -220,6 +263,28 @@ def _run_batch_submit(
         raise NotImplementedError(
             "Batch mode does not support two-step prompts. Use mode: sync."
         )
+
+    state_path = out.parent / f"{out.stem}_batch_state.json"
+
+    if state_path.exists():
+        state = json.loads(state_path.read_text(encoding="utf-8"))
+        chunks = state["chunks"]
+        next_idx = next(
+            (i for i, c in enumerate(chunks) if c["batch_id"] is None), None
+        )
+        if next_idx is None:
+            print(
+                "[batch] All chunks already submitted. Run with mode: batch_retrieve."
+            )
+            return
+        batch_id = _submit_chunk(client, Path(chunks[next_idx]["input_file"]))
+        state["chunks"][next_idx]["batch_id"] = batch_id
+        state_path.write_text(json.dumps(state, indent=2), encoding="utf-8")
+        print(
+            f"\n[batch] Submitted chunk {next_idx + 1}/{len(chunks)}. Batch ID: {batch_id}"
+        )
+        print("[batch] Run with mode: batch_retrieve to check status.")
+        return
 
     model = llm_cfg["model"]
     json_models = set(llm_cfg["json_models"])
@@ -257,28 +322,31 @@ def _run_batch_submit(
             )
         )
 
-    jsonl_path = out.parent / f"{out.stem}_batch_input.jsonl"
-    jsonl_path.write_text("\n".join(lines), encoding="utf-8")
-    print(f"[batch] Written {len(lines)} requests to {jsonl_path}")
+    chunk_size = int(llm_cfg.get("batch_chunk_size") or len(lines))
+    raw_chunks = [lines[j : j + chunk_size] for j in range(0, len(lines), chunk_size)]
+    total = len(raw_chunks)
+    print(f"[batch] {len(lines)} requests → {total} chunk(s) of ≤{chunk_size}")
 
-    with open(jsonl_path, "rb") as f:
-        uploaded = client.files.create(file=f, purpose="batch")
-    print(f"[batch] Uploaded input file: {uploaded.id}")
+    state: dict = {"chunks": []}
+    for idx, chunk_lines in enumerate(raw_chunks):
+        jsonl_path = out.parent / f"{out.stem}_chunk_{idx:03d}_batch_input.jsonl"
+        jsonl_path.write_text("\n".join(chunk_lines), encoding="utf-8")
+        state["chunks"].append(
+            {
+                "input_file": str(jsonl_path),
+                "batch_id": None,
+                "done": False,
+                "result_file": None,
+            }
+        )
 
-    batch = client.batches.create(
-        input_file_id=uploaded.id,
-        endpoint="/v1/chat/completions",
-        completion_window="24h",
-    )
-    batch_id_path = out.parent / f"{out.stem}_batch_id.txt"
-    batch_id_path.write_text(batch.id, encoding="utf-8")
+    batch_id = _submit_chunk(client, Path(state["chunks"][0]["input_file"]))
+    state["chunks"][0]["batch_id"] = batch_id
+    state_path.write_text(json.dumps(state, indent=2), encoding="utf-8")
 
-    print(f"\n[batch] Submitted. Batch ID: {batch.id}")
-    print(f"[batch] Status: {batch.status}")
-    print(f"[batch] Batch ID saved to: {batch_id_path}")
-    print(
-        f"[batch] Set llm.batch_id: {batch.id} in config.yaml, then run with mode: batch_retrieve"
-    )
+    print(f"\n[batch] Submitted chunk 1/{total}. Batch ID: {batch_id}")
+    print(f"[batch] State saved to: {state_path}")
+    print("[batch] Run with mode: batch_retrieve to check status and advance.")
 
 
 # ---------------------------------------------------------------------------
@@ -297,52 +365,109 @@ def _run_batch_retrieve(
     inp_path: Path,
     classes: list[str],
     config: dict | None = None,
+    eval_indices: set | None = None,
 ) -> None:
-    batch_id = llm_cfg.get("batch_id") or None
-    if not batch_id:
-        batch_id_path = out.parent / f"{out.stem}_batch_id.txt"
-        if not batch_id_path.exists():
-            raise RuntimeError(
-                f"No batch_id found. Set llm.batch_id in config.yaml or ensure "
-                f"{batch_id_path} exists from a prior batch_submit run."
-            )
-        batch_id = batch_id_path.read_text(encoding="utf-8").strip()
+    state_path = out.parent / f"{out.stem}_batch_state.json"
 
+    if not state_path.exists():
+        # Legacy single-batch path
+        batch_id = llm_cfg.get("batch_id") or None
+        if not batch_id:
+            batch_id_path = out.parent / f"{out.stem}_batch_id.txt"
+            if not batch_id_path.exists():
+                raise RuntimeError(
+                    "No batch state found. Run with mode: batch_submit first, "
+                    "or set llm.batch_id in config.yaml."
+                )
+            batch_id = batch_id_path.read_text(encoding="utf-8").strip()
+        batch = client.batches.retrieve(batch_id)
+        print(f"[batch] ID: {batch_id}  status: {batch.status}")
+        if batch.status in ("validating", "in_progress", "finalizing"):
+            completed = batch.request_counts.completed if batch.request_counts else "?"
+            total_req = batch.request_counts.total if batch.request_counts else "?"
+            print(f"[batch] Progress: {completed}/{total_req} — check back later.")
+            return
+        if batch.status != "completed":
+            raise RuntimeError(
+                f"Batch ended with status '{batch.status}'. "
+                f"Error file ID: {batch.error_file_id}"
+            )
+        results = _parse_batch_results(
+            client.files.content(batch.output_file_id).content,
+            df,
+            narr,
+            final_cols,
+            compact,
+        )
+        _save_output(results, out)
+        if llm_cfg["evaluate"]:
+            evaluate_llm_predictions(out, inp_path, classes, config, eval_indices)
+        return
+
+    state = json.loads(state_path.read_text(encoding="utf-8"))
+    chunks = state["chunks"]
+    total = len(chunks)
+
+    active_idx = next(
+        (i for i, c in enumerate(chunks) if c["batch_id"] and not c["done"]),
+        None,
+    )
+
+    if active_idx is None:
+        if all(c["done"] for c in chunks):
+            print("[batch] All chunks already complete and merged.")
+        else:
+            pending = sum(1 for c in chunks if not c["batch_id"])
+            print(
+                f"[batch] {pending} chunk(s) not yet submitted. Run with mode: batch_submit."
+            )
+        return
+
+    batch_id = chunks[active_idx]["batch_id"]
     batch = client.batches.retrieve(batch_id)
-    print(f"[batch] ID: {batch_id}  status: {batch.status}")
+    print(
+        f"[batch] Chunk {active_idx + 1}/{total}  ID: {batch_id}  status: {batch.status}"
+    )
 
     if batch.status in ("validating", "in_progress", "finalizing"):
         completed = batch.request_counts.completed if batch.request_counts else "?"
-        total = batch.request_counts.total if batch.request_counts else "?"
-        print(f"[batch] Progress: {completed}/{total} — check back later.")
+        total_req = batch.request_counts.total if batch.request_counts else "?"
+        print(f"[batch] Progress: {completed}/{total_req} — check back later.")
         return
 
     if batch.status != "completed":
         raise RuntimeError(
-            f"Batch ended with status '{batch.status}'. "
+            f"Chunk {active_idx + 1}/{total} ended with status '{batch.status}'. "
             f"Error file ID: {batch.error_file_id}"
         )
 
-    raw_bytes = client.files.content(batch.output_file_id).content
-    results: dict[int, dict] = {}
-    for line in raw_bytes.decode("utf-8").splitlines():
-        item = json.loads(line)
-        i = int(item["custom_id"].removeprefix("row-"))
-        if item.get("error"):
-            results[i] = {"original_index": i, "error": str(item["error"])}
-            continue
-        content = item["response"]["body"]["choices"][0]["message"]["content"]
-        n = str(df.loc[i, narr]).strip() if i in df.index else ""
-        try:
-            x = flatten(json.loads(content))
-        except Exception as e:
-            x = {"error": str(e)}
-        x |= {"original_index": i, narr: n}
-        results[i] = finals(x, narr, final_cols) if compact else x
+    result_file = out.parent / f"{out.stem}_chunk_{active_idx:03d}_result.jsonl"
+    result_file.write_bytes(client.files.content(batch.output_file_id).content)
+    state["chunks"][active_idx]["done"] = True
+    state["chunks"][active_idx]["result_file"] = str(result_file)
+    print(f"[batch] Chunk {active_idx + 1}/{total} complete. Results: {result_file}")
 
-    _save_output(results, out)
-    if llm_cfg["evaluate"]:
-        evaluate_llm_predictions(out, inp_path, classes, config)
+    next_idx = next((i for i, c in enumerate(chunks) if not c["batch_id"]), None)
+    if next_idx is not None:
+        next_batch_id = _submit_chunk(client, Path(chunks[next_idx]["input_file"]))
+        state["chunks"][next_idx]["batch_id"] = next_batch_id
+        print(
+            f"[batch] Auto-submitted chunk {next_idx + 1}/{total}. Batch ID: {next_batch_id}"
+        )
+        print("[batch] Run with mode: batch_retrieve again to check status.")
+
+    state_path.write_text(json.dumps(state, indent=2), encoding="utf-8")
+
+    if all(c["done"] for c in state["chunks"]):
+        print(f"\n[batch] All {total} chunks complete. Merging results...")
+        results: dict[int, dict] = {}
+        for chunk in state["chunks"]:
+            results |= _parse_batch_results(
+                Path(chunk["result_file"]).read_bytes(), df, narr, final_cols, compact
+            )
+        _save_output(results, out)
+        if llm_cfg["evaluate"]:
+            evaluate_llm_predictions(out, inp_path, classes, config, eval_indices)
 
 
 # ---------------------------------------------------------------------------
@@ -377,8 +502,38 @@ def run_llm_classification(config: dict) -> None:
 
     mode = llm_cfg["mode"]
 
+    # Compute eval indices — same 50-per-class balanced split as Qwen LoRA experiments
+    lora_cfg = config.get("lora_qwen3", {})
+    train_per_class = int(lora_cfg.get("train_per_class", 125))
+    test_per_class = int(lora_cfg.get("test_per_class", 50))
+    random_state = config["models"]["random_state"]
+
+    _df_full = _reader(inp_path)(inp_path)
+    eval_indices = None
+    if "category" in _df_full.columns:
+        test_idxs = []
+        for _, group in _df_full.groupby("category"):
+            sample = group.sample(
+                n=train_per_class + test_per_class, random_state=random_state
+            )
+            test_idxs.extend(sample.index[train_per_class:].tolist())
+        eval_indices = set(test_idxs)
+        print(
+            f"[dataset] Evaluating on {len(eval_indices)} rows ({test_per_class} per class)"
+        )
+
     if mode == "evaluate":
-        evaluate_llm_predictions(out, inp_path, classes, config)
+        eval_prompts = llm_cfg.get("eval_prompts", [prompt_name])
+        for p in eval_prompts:
+            out_p = (
+                Path(config["paths"]["llm_output_dir"])
+                / f"{inp_path.stem}_LLM_Output_{p}.csv"
+            )
+            if not out_p.exists():
+                print(f"\n[{p}] Output file not found — skipping: {out_p}")
+                continue
+            print(f"\n{'='*60}\nEvaluating: {p}\n{'='*60}")
+            evaluate_llm_predictions(out_p, inp_path, classes, config, eval_indices)
         return
 
     key = resolve_openai_api_key(llm_cfg)
@@ -398,6 +553,7 @@ def run_llm_classification(config: dict) -> None:
             inp_path,
             classes,
             config,
+            eval_indices,
         )
         return
 
@@ -410,8 +566,12 @@ def run_llm_classification(config: dict) -> None:
     if narr not in df.columns:
         raise ValueError(f"Missing narrative column '{narr}' in {inp_path}.")
 
-    _lim = llm_cfg["limit"]
-    subset = df.head(int(_lim)) if _lim not in (None, "", "none", "null") else df
+    if eval_indices is not None:
+        subset = df.loc[sorted(eval_indices)]
+    else:
+        _lim = llm_cfg["limit"]
+        subset = df.head(int(_lim)) if _lim not in (None, "", "none", "null") else df
+
     tasks = [(i, str(r[narr]).strip()) for i, r in subset.iterrows()]
     final_cols = set(llm_cfg["output_columns"])
 
@@ -432,4 +592,5 @@ def run_llm_classification(config: dict) -> None:
             inp_path,
             classes,
             config,
+            eval_indices,
         )

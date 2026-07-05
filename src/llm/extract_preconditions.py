@@ -11,9 +11,11 @@ import openai
 import pandas as pd
 import yaml
 from sklearn.metrics import accuracy_score, f1_score
+from sklearn.model_selection import train_test_split
 from tqdm import tqdm
 
 from llm.utils import resolve_openai_api_key
+from models.random_forest import make_four_class_target_from_config
 
 _EXCLUDED = {"Error", "Violation"}
 
@@ -195,6 +197,23 @@ def run_extract_preconditions(config: dict) -> None:
 
     lim = llm_cfg.get("limit")
     subset = df if lim in (None, "", "none", "null") else df.head(int(lim))
+
+    eval_indices = None
+    eval_split = config.get("dataset", {}).get("eval_split")
+    if eval_split is not None:
+        y = make_four_class_target_from_config(subset, config)
+        _, eval_df = train_test_split(
+            subset,
+            test_size=float(eval_split),
+            stratify=y,
+            random_state=config["models"]["random_state"],
+        )
+        eval_indices = set(eval_df.index.tolist())
+        print(
+            f"[dataset] Evaluating on {len(eval_indices)} rows "
+            f"({float(eval_split):.0%} of {len(subset)})"
+        )
+
     tasks = [(i, str(row[narr_col]).strip()) for i, row in subset.iterrows()]
 
     results: dict = {}
@@ -212,7 +231,11 @@ def run_extract_preconditions(config: dict) -> None:
             lambda idx, c=item: results.get(idx, {}).get(c, 0)
         )
 
-    _evaluate_precondition_extraction(out_df, subset, config)
+    if eval_indices is not None:
+        eval_mask = out_df.index.isin(eval_indices)
+        _evaluate_precondition_extraction(out_df[eval_mask], subset[eval_mask], config)
+    else:
+        _evaluate_precondition_extraction(out_df, subset, config)
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_df.to_csv(out_path, index=False, encoding="utf-8-sig")

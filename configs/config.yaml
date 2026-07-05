@@ -1,11 +1,18 @@
-﻿llm:
-  api_key: ""
-  input: balanced_200_50_per_class.csv
+﻿dataset:
+  eval_split: 0.3  # fraction of the 700 accidents used for evaluation (e.g. 0.2 → 140 rows, 35 per class)
+
+llm:
+  api_key: "" # set via OPENAI_API_KEY env var, do not commit a real key
+  input: balanced_700.csv  # 700-row easy dataset (175 per class, strongest signal from 2536)
   prompt: classify_direct # yaml file name (without .yaml) in src/llm/prompts/ASRS/
   default_prompt: classify_direct
   model: gpt-4o-mini
-  mode: sync # sync, batch_submit, batch_retrieve, evaluate
-  limit: 2 # null for all rows
+  mode: evaluate # sync, batch_submit, batch_retrieve, evaluate
+  eval_prompts:
+    - classify_direct
+    - ASRS_extract_and_classify
+  limit: null
+  batch_chunk_size: 75 # max requests per batch job (avoids 90k org enqueued-token limit)
   compact: false
   evaluate: true # print accuracy + confusion matrix after classification
   retry_wait: 5 # seconds added to provider-suggested waits
@@ -33,7 +40,7 @@
     - Confidence
 
 paths:
-  ghfacs_data_dir: 'data/processed'
+  ghfacs_data_dir: 'data/intermediate'
   llm_output_dir: 'data/intermediate'
   prompts_dir: 'src/llm/prompts/ASRS'
   processed_data: 'data/processed/'
@@ -46,13 +53,18 @@ paths:
   svm_classify_output_dir: 'data/processed/svm_classify'
   rf_output_dir: 'data/processed/rf'
   rf_classify_source: 'data/intermediate/processed_output.csv'
-  rf_classify_input: 'data/intermediate/balanced_processed_output.csv'
+  rf_classify_input: 'data/intermediate/balanced_700_preconditions.csv'
   balanced_processed_output: 'data/intermediate/balanced_processed_output.csv'
   rf_new_features_output_dir: 'data/processed/rf_new_features'
   ghfacs_svm_output_dir: 'data/processed/ghfacs_svm'
   dag_output_dir: 'data/processed'
   eda_output_dir: 'data/intermediate'
-  preconditions_csv: 'data/intermediate/balanced_200_50_per_class_preconditions.csv'
+  preconditions_csv: 'data/intermediate/balanced_700_preconditions.csv'
+  llm_category_csv: 'data/intermediate/balanced_700_LLM_Output_classify_direct.csv'
+
+  llm_subfactor_features_csv: 'data/processed/rf/llm_predicted_subfactor_features_50_per_class.csv'
+  rf_lora_preconditions_csv: 'data/intermediate/balanced_700_preconditions_qwen3.csv'
+  rf_gpt_preconditions_csv: 'data/intermediate/balanced_700_preconditions.csv'
 
 source_columns:
   Anomaly: 'Events_Anomaly'
@@ -175,8 +187,11 @@ models:
 
 
   rf:
+    use_llm_features: true  # true → llm_* cols (requires preconditions CSV); false → ground truth cols
+    train_per_class: 125    # samples per class for training
+    test_per_class: 50      # samples per class for testing
     test_size: 0.2
-    n_iter: 200
+    n_iter: 50
     n_estimators: [100, 200, 300, 500, 800, 1000]
     max_depth: [null, 5, 10, 15, 20, 30, 50]
     min_samples_split: [2, 5, 10, 15, 20]

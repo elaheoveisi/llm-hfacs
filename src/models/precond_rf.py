@@ -1,54 +1,65 @@
 from __future__ import annotations
 
+import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import RandomizedSearchCV, StratifiedKFold
 
-from features.balancing import balance_and_report
 from features.utils import (
     ensure_dir,
+    get_hfacs_feature_cols,
     load_dataset,
     print_eval_metrics,
     save_predictions,
-    stratified_split,
 )
-from models.random_forest import make_four_class_target_from_config
 
 
 def precond_rf(config):
-    """Random Forest using LLM-extracted precondition columns (llm_*) as features."""
     out_dir = config["paths"]["rf_output_dir"]
     ensure_dir(out_dir)
     cfg = config["models"]["rf"]
     random_state = config["models"]["random_state"]
+    train_per_class = cfg.get("train_per_class", 125)
+    test_per_class = cfg.get("test_per_class", 50)
+    use_llm = cfg.get("use_llm_features", False)
 
-    df = load_dataset(config["paths"]["preconditions_csv"])
+    df = load_dataset(config["paths"]["rf_classify_input"])
 
-    feature_cols = [c for c in df.columns if c.startswith("llm_")]
-    if not feature_cols:
-        raise ValueError(
-            "No llm_* columns found in preconditions_csv. Run extract_preconditions first."
-        )
+    hfacs_cols = get_hfacs_feature_cols(config)
+    bare_cols = [c for c in hfacs_cols if c in df.columns]
+    llm_cols = ["llm_" + c for c in hfacs_cols if "llm_" + c in df.columns]
 
-    y4 = make_four_class_target_from_config(df, config)
-    label_names = {0: "Neither", 1: "Error", 2: "Violation", 3: "Both"}
+    if not bare_cols:
+        raise ValueError("No ground truth HFACS columns found in dataset.")
+    if use_llm and not llm_cols:
+        raise ValueError("use_llm_features=true but no llm_* columns found in dataset.")
 
-    print(f"\n[RF-Preconditions] Using {len(feature_cols)} llm_* feature columns")
-    print("\nClass distribution (all data):")
-    for cls, name in label_names.items():
-        print(f"  {name}: {(y4 == cls).sum()}")
+    feature_cols = llm_cols if use_llm else bare_cols
+    mode_label = "LLM-extracted" if use_llm else "ground truth"
+    y = df["category"]
 
-    X = df.loc[:, feature_cols].astype(float)
-    X, y4 = balance_and_report(X, y4, "full")
-    X_train, X_test, y_train, y_test = stratified_split(
-        X, y4, test_size=cfg["test_size"], random_state=random_state
+    print(
+        f"\n[RF-Preconditions] Features: {mode_label} ({len(feature_cols)} columns) | Labels: ground truth"
     )
+    print("\nClass distribution (all data):")
+    for cls, count in y.value_counts().sort_index().items():
+        print(f"  {cls}: {count}")
 
-    print("\nClass distribution in train split:")
-    for cls, count in y_train.value_counts().sort_index().items():
-        print(f"  Class {cls} ({label_names[cls]}): {count} cases")
-    print("\nClass distribution in test split:")
-    for cls, count in y_test.value_counts().sort_index().items():
-        print(f"  Class {cls} ({label_names[cls]}): {count} cases")
+    train_idx, test_idx = [], []
+    for cls in sorted(y.unique()):
+        idx = y[y == cls].index.tolist()
+        sampled = pd.Series(idx).sample(
+            n=train_per_class + test_per_class, random_state=random_state
+        )
+        train_idx.extend(sampled.iloc[:train_per_class].tolist())
+        test_idx.extend(sampled.iloc[train_per_class:].tolist())
+
+    X_train = df.loc[train_idx, feature_cols].astype(float)
+    y_train = y.loc[train_idx]
+    X_test = df.loc[test_idx, feature_cols].astype(float)
+    y_test = y.loc[test_idx]
+
+    print(f"\nTrain: {len(X_train)} samples ({train_per_class} per class)")
+    print(f"Test:  {len(X_test)} samples ({test_per_class} per class)")
 
     param_dist = {
         "n_estimators": cfg["n_estimators"],
@@ -76,6 +87,5 @@ def precond_rf(config):
     print(f"Best CV f1_macro: {grid.best_score_:.4f}")
 
     y_pred = grid.predict(X_test)
-    print("\nClassification report (0=Neither, 1=Error, 2=Violation, 3=Both):")
     print_eval_metrics(y_test, y_pred)
     save_predictions(y_test, y_pred, out_dir, "rf_preconditions_predictions.csv")

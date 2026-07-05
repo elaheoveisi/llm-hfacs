@@ -10,10 +10,18 @@ from eda import (
 )
 from features.utils import load_dataset
 from llm.classify import run_llm_classification as run_classify
+from llm.finetune import run_finetune_pipeline as run_finetune
 from llm.extract_preconditions import run_extract_preconditions
 from models.hfacs import svm as run_svm
 from models.random_forest import random_forest as run_rf
 from models.precond_rf import precond_rf as run_rf_preconditions
+from models.precondition_rf_lora import (
+    precondition_rf_lora as run_rf_lora_preconditions,
+)
+from models.precondition_rf_gpt import precondition_rf_gpt as run_rf_gpt_preconditions
+from models.precondition_rf_gpt_reverse import (
+    precondition_rf_gpt_reverse as run_rf_gpt_reverse_preconditions,
+)
 from models.svm_classify import svm_classify as run_svm_classify
 
 from utils import skip_run
@@ -54,7 +62,7 @@ with skip_run("skip", "svm") as check, check():
 with skip_run("skip", "extract_preconditions") as check, check():
     run_extract_preconditions(config)
 
-with skip_run("run", "classify") as check, check():
+with skip_run("skip", "classify") as check, check():  # mode: evaluate in config.yaml
     run_classify(config)
 
 with skip_run("skip", "rf") as check, check():
@@ -65,3 +73,15 @@ with skip_run("skip", "rf_preconditions") as check, check():
 
 with skip_run("skip", "svm_classify") as check, check():
     run_svm_classify(config)
+
+with skip_run("skip", "finetune") as check, check():
+    run_finetune(config)
+
+with skip_run("skip", "rf_lora_preconditions") as check, check():
+    run_rf_lora_preconditions(config)
+
+with skip_run("skip", "rf_gpt_preconditions") as check, check():
+    run_rf_gpt_preconditions(config)
+
+with skip_run("run", "rf_gpt_reverse_preconditions") as check, check():
+    run_rf_gpt_reverse_preconditions(config)
